@@ -9,4 +9,7 @@ add_executable(simulator
     entities/World.cpp
 )
 
-target_include_directories(simulator PRIVATE include)
+target_include_directories(simulator PRIVATE
+    include
+    external/websocketpp
+)
