@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/koizito/cpp_projects/particles_simulator/build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
