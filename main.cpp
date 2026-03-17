@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <iostream>
 #include "entities/World.hpp"
 
@@ -32,7 +33,7 @@ int main() {
 
     float gravity_accel = -9.81;
 
-    for (int i = 0; i < mainWorld.particles.size(); i++) {
+    for (size_t i = 0; i < mainWorld.particles.size(); i++) {
         Particle& particle = mainWorld.particles[i];
         std::cout << "Particle: " << i+1 << "\n";
         std::cout << "Mass: " << particle.mass << "\n";
@@ -50,7 +51,7 @@ int main() {
     float time_step = 0.5;
 
     while (current_time <= 10.0) {
-        for (int i = 0; i < mainWorld.particles.size(); i++) {
+        for (size_t i = 0; i < mainWorld.particles.size(); i++) {
             Particle& particle = mainWorld.particles[i];
             std::cout << "Particle: " << i+1 << "\n";
             std::cout << "X coordinate: " << particle.x << "\n";
