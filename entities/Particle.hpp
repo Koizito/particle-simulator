@@ -2,12 +2,14 @@
 #include "Force.hpp"
 
 struct Particle {
-    float mass = 0; // grams
-    float x = 0; // meters
-    float y = 0; // meters
-    float z = 0; // meters
-    float vel_x = 0; // meters/second
-    float vel_y = 0; // meters/second
-    float vel_z = 0; // meters/second
+    float mass; // grams
+    float x; // meters
+    float y; // meters
+    float z; // meters
+    float vel_x; // meters/second
+    float vel_y; // meters/second
+    float vel_z; // meters/second
     std::vector<Force> forces;
+
+    Particle(float input_mass=1.0f, float input_x=0.0f, float input_y=0.0f, float input_z=0.0f, float input_vel_x=0.0f, float input_vel_y=0.0f, float input_vel_z=0.0f);
 };

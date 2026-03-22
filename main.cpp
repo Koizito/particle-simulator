@@ -1,67 +1,108 @@
 #include <cstddef>
-#include <iostream>
 #include "entities/World.hpp"
+#include <IXWebSocketServer.h>
+#include <IXWebSocket.h>
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <string>
+#include <thread>
 
-int main() {
-    std::cout << "Starting the Particle Simulator \n\n";
+// Single client pointer
+ix::WebSocket* currentClient = nullptr;
 
-    World mainWorld;
-    mainWorld.maxX = 100;
-    mainWorld.maxY = 100;
-    mainWorld.maxZ = 100;
-
-    Particle particleA;
-    particleA.mass = 10;
-    particleA.x = 1;
-    particleA.y = 2;
-    particleA.z = 3;
-    particleA.vel_x = 5;
-    particleA.vel_y = 5;
-    particleA.vel_z = 5;
-
-    Particle particleB;
-    particleB.mass = 20;
-    particleB.x = 2;
-    particleB.y = 4;
-    particleB.z = 6;
-    particleB.vel_x = 10;
-    particleB.vel_y = 10;
-    particleB.vel_z = 10;
-
-    mainWorld.particles.push_back(particleA);
-    mainWorld.particles.push_back(particleB);
-
-    float gravity_accel = -9.81;
-
-    for (size_t i = 0; i < mainWorld.particles.size(); i++) {
-        Particle& particle = mainWorld.particles[i];
-        std::cout << "Particle: " << i+1 << "\n";
-        std::cout << "Mass: " << particle.mass << "\n";
-        std::cout << "X coordinate: " << particle.x << "\n";
-        std::cout << "Y coordinate: " << particle.y << "\n";
-        std::cout << "Z coordinate: " << particle.z << "\n";
-        std::cout << "Velocity in X coordinate: " << particle.vel_x << "\n";
-        std::cout << "Velocity in Y coordinate: " << particle.vel_y << "\n";
-        std::cout << "Velocity in Z coordinate: " << particle.vel_z << "\n\n";
+// Send data to client if connected
+void sendToClient(const std::string& message)
+{
+    if (currentClient)
+    {
+        currentClient->send(message);
     }
+}
 
-    std::cout << "Running simulation... \n\n";
+int main()
+{
+    ix::initNetSystem();
+    ix::WebSocketServer server(8080, "0.0.0.0");
 
-    float current_time = 0.0;
-    float time_step = 0.5;
-
-    while (current_time <= 10.0) {
-        for (size_t i = 0; i < mainWorld.particles.size(); i++) {
-            Particle& particle = mainWorld.particles[i];
-            std::cout << "Particle: " << i+1 << "\n";
-            std::cout << "X coordinate: " << particle.x << "\n";
-            std::cout << "Y coordinate: " << particle.y << "\n";
-            std::cout << "Z coordinate: " << particle.z << "\n\n";
+    server.setOnClientMessageCallback(
+        [](std::shared_ptr<ix::ConnectionState>,
+           ix::WebSocket& webSocket,
+           const std::unique_ptr<ix::WebSocketMessage>& msg)
+        {
+            if (msg->type == ix::WebSocketMessageType::Open)
+            {
+                if (currentClient != nullptr)
+                {
+                    webSocket.send("Server busy");
+                    webSocket.close();
+                    return;
+                }
+                std::cout << "Client connected\n";
+                currentClient = &webSocket;
+            }
+            else if (msg->type == ix::WebSocketMessageType::Close)
+            {
+                std::cout << "Client disconnected\n";
+                if (currentClient == &webSocket)
+                    currentClient = nullptr;
+            }
         }
+    );
 
-        mainWorld.step(time_step, gravity_accel);
-        
-        current_time = current_time + time_step;
-
+    if (!server.listen().first)
+    {
+        std::cerr << "Listen error\n";
+        return 1;
     }
+
+    server.start();
+    std::cout << "Continuous simulation server running on port 8080\n";
+
+    std::thread simThread([]()
+    {    std::cout << "Starting the Particle Simulator \n\n";
+
+        World mainWorld(100, 100, 100);
+
+        mainWorld.particles.emplace_back(10.0f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f, 15.0f);
+        mainWorld.particles.emplace_back(20.0f, 2.0f, 4.0f, 6.0f, 10.0f, 15.0f, 20.0f);
+
+        while (true)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            mainWorld.step(0.1);
+            
+            size_t count = mainWorld.particles.size();
+
+            nlohmann::json header;
+            header["type"] = "particles";
+            header["count"] = count;
+
+            std::vector<float> buffer;
+            buffer.reserve(count * 7);
+
+            for (const auto& p : mainWorld.particles)
+            {   
+                buffer.push_back(p.mass);
+                buffer.push_back(p.x);
+                buffer.push_back(p.y);
+                buffer.push_back(p.z);
+                buffer.push_back(p.vel_x);
+                buffer.push_back(p.vel_y);
+                buffer.push_back(p.vel_z);
+            }
+            
+            if (currentClient) {
+                currentClient->send(header.dump());
+                currentClient->sendBinary(
+                    std::string(reinterpret_cast<char*>(buffer.data()),
+                                buffer.size() * sizeof(float))
+                );
+            }
+        }
+    });
+
+    simThread.join();
+
+    server.stop();
+    ix::uninitNetSystem();
 }

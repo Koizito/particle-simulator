@@ -1,6 +1,9 @@
 #include "World.hpp"
 
-void World::step(float dt, float gravity_accel) {
+World::World(float input_max_x, float input_max_y, float input_max_z, float input_gravity_accel)
+    : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), gravity_accel(input_gravity_accel) {}
+
+void World::step(float dt) {
     for (Particle& particle : particles) {
         float particle_force_x = 0;
         float particle_force_y = 0;
@@ -41,24 +44,24 @@ float World::acceleration(float force, float mass) {
 }
 
 void World::process_collision(Particle& particle) {
-    if (particle.x > maxX) {
-        particle.x = 2 * maxX - particle.x;
+    if (particle.x > max_x) {
+        particle.x = 2 * max_x - particle.x;
         particle.vel_x = -particle.vel_x;
     } else if (particle.x < 0) {
         particle.x = -particle.x; 
         particle.vel_x = -particle.vel_x;
     }
 
-    if (particle.y > maxY) {
-        particle.y = 2 * maxY - particle.y;
+    if (particle.y > max_y) {
+        particle.y = 2 * max_y - particle.y;
         particle.vel_y = -particle.vel_y;
     } else if (particle.y < 0) {
         particle.y = -particle.y;
         particle.vel_y = -particle.vel_y;
     }
 
-    if (particle.z > maxZ) {
-        particle.z = 2 * maxZ - particle.z; 
+    if (particle.z > max_z) {
+        particle.z = 2 * max_z - particle.z; 
         particle.vel_z = -particle.vel_z;
     } else if (particle.z < 0) {
         particle.z = -particle.z; 
