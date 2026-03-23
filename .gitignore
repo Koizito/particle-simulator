@@ -39,3 +39,10 @@
 
 # debug information files
 *.dwo
+
+build/
+.vscode/
+.cache/
+
+user_stories.md
+compile_commands.json
