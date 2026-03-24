@@ -1,9 +1,11 @@
 #include "World.hpp"
+#include <cmath>
 
 World::World(float input_max_x, float input_max_y, float input_max_z, float input_gravity_accel)
     : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), gravity_accel(input_gravity_accel) {}
 
 void World::step(float dt) {
+    
     for (Particle& particle : particles) {
         float particle_force_x = 0;
         float particle_force_y = 0;
@@ -19,52 +21,33 @@ void World::step(float dt) {
         float accel_y = acceleration(particle_force_y, particle.mass);
         float accel_z = acceleration(particle_force_z, particle.mass) + gravity_accel;
 
-        particle.x = particle.x + position_displacement(dt, particle.vel_x, accel_x);
-        particle.y = particle.y + position_displacement(dt, particle.vel_y, accel_y);
-        particle.z = particle.z + position_displacement(dt, particle.vel_z, accel_z);
-
-        particle.vel_x = particle.vel_x + velocity_displacement(dt, accel_x);
-        particle.vel_y = particle.vel_y + velocity_displacement(dt, accel_y);
-        particle.vel_z = particle.vel_z + velocity_displacement(dt, accel_z);
-
-        process_collision(particle);
+        position_velocity_calculation(dt, particle.x, particle.vel_x, accel_x, max_x);
+        position_velocity_calculation(dt, particle.y, particle.vel_y, accel_y, max_y);
+        position_velocity_calculation(dt, particle.z, particle.vel_z, accel_z, max_z);
     }
 }
 
-float World::position_displacement(float  dt, float vel, float accel) {
-    return vel * dt + (accel * dt * dt) / 2;
-}
+void World::position_velocity_calculation(float  dt, float& pos, float& vel, float accel, float max) {
+    float L = max;
+    float period = 2*L;
 
-float World::velocity_displacement(float  dt, float accel) {
-    return accel * dt;
+    // compute displacement including acceleration
+    float newPos = pos + vel*dt + 0.5f*accel*dt*dt;
+
+    // wrap position into repeated mirrored space
+    float posRemainder = std::fmod(newPos, period);
+    if (posRemainder < 0) posRemainder += period;
+
+    // decide reflection
+    if (posRemainder > L) {
+        pos = period - posRemainder;
+        vel = -(vel + accel*dt); // velocity flips after timestep
+    } else {
+        pos = posRemainder;
+        vel = vel + accel*dt; // standard velocity update
+    }
 }
 
 float World::acceleration(float force, float mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
-}
-
-void World::process_collision(Particle& particle) {
-    if (particle.x > max_x) {
-        particle.x = 2 * max_x - particle.x;
-        particle.vel_x = -particle.vel_x;
-    } else if (particle.x < 0) {
-        particle.x = -particle.x; 
-        particle.vel_x = -particle.vel_x;
-    }
-
-    if (particle.y > max_y) {
-        particle.y = 2 * max_y - particle.y;
-        particle.vel_y = -particle.vel_y;
-    } else if (particle.y < 0) {
-        particle.y = -particle.y;
-        particle.vel_y = -particle.vel_y;
-    }
-
-    if (particle.z > max_z) {
-        particle.z = 2 * max_z - particle.z; 
-        particle.vel_z = -particle.vel_z;
-    } else if (particle.z < 0) {
-        particle.z = -particle.z; 
-        particle.vel_z = -particle.vel_z;
-    }
 }

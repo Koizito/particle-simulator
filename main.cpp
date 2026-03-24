@@ -1,22 +1,45 @@
+#include <atomic>
 #include <cstddef>
 #include "entities/World.hpp"
 #include <IXWebSocketServer.h>
 #include <IXWebSocket.h>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
 // Single client pointer
-ix::WebSocket* currentClient = nullptr;
+std::atomic<ix::WebSocket*> currentClient{nullptr};
+// Default step for simulation
+float dt = 1.0f;
+// Should the continuous simulation be running
+std::atomic<bool> shouldRun = false;
+// Mutex to control the mainWorld access
+std::mutex worldMutex;
 
-// Send data to client if connected
-void sendToClient(const std::string& message)
+std::vector<std::string> particleRequiredFields = {
+    "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
+};
+
+std::vector<std::string> worldRequiredFieldsBoundaries = {
+    "max_x", "max_y", "max_z"
+};
+
+std::vector<std::string> worldRequiredFieldsGravity = {
+    "max_x", "max_y", "max_z"
+};
+
+bool areAllJsonFieldsValid(nlohmann::json json_message, std::vector<std::string> fieldsToCheck)
 {
-    if (currentClient)
-    {
-        currentClient->send(message);
+    for (auto& field : fieldsToCheck) {
+        if (!json_message.contains(field)) {
+            std::cerr << "Missing field: " << field << "\n";
+            return false;
+        }
     }
+    return true;
 }
 
 int main()
@@ -24,27 +47,93 @@ int main()
     ix::initNetSystem();
     ix::WebSocketServer server(8080, "0.0.0.0");
 
+    World mainWorld;
+
     server.setOnClientMessageCallback(
-        [](std::shared_ptr<ix::ConnectionState>,
+        [&mainWorld](std::shared_ptr<ix::ConnectionState>,
            ix::WebSocket& webSocket,
            const std::unique_ptr<ix::WebSocketMessage>& msg)
         {
-            if (msg->type == ix::WebSocketMessageType::Open)
-            {
-                if (currentClient != nullptr)
-                {
+            if (msg->type == ix::WebSocketMessageType::Open) {
+
+                ix::WebSocket* expected = nullptr;
+                if (!currentClient.compare_exchange_strong(expected, &webSocket)) {
                     webSocket.send("Server busy");
                     webSocket.close();
                     return;
                 }
                 std::cout << "Client connected\n";
-                currentClient = &webSocket;
-            }
-            else if (msg->type == ix::WebSocketMessageType::Close)
-            {
+
+            } else if (msg->type == ix::WebSocketMessageType::Close) {
+
+                ix::WebSocket* expected = &webSocket;
+                currentClient.compare_exchange_strong(expected, nullptr);
+
                 std::cout << "Client disconnected\n";
-                if (currentClient == &webSocket)
-                    currentClient = nullptr;
+
+            } else if (msg->type == ix::WebSocketMessageType::Message) {
+
+                nlohmann::json json_message;
+
+                try {
+                    json_message = nlohmann::json::parse(msg->str);
+                } catch (...) {
+                    std::cout << "Problem parsing the JSON!";
+                    return;
+                }
+                
+                std::string type = json_message.value("type", "");
+
+                if (type.empty()) {
+                    std::cout << "Missing 'type'\n";
+                    return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(worldMutex);
+
+                    if (type == "start") {
+
+                        shouldRun = true;
+
+                    } else if (type == "stop") {
+
+                        shouldRun = false;
+
+                    } else if (type == "create_particle") {
+
+                        if (!areAllJsonFieldsValid(json_message, particleRequiredFields)) return;
+
+                        mainWorld.particles.emplace_back(
+                            json_message["mass"],
+                            json_message["x"],
+                            json_message["y"],
+                            json_message["z"],
+                            json_message["vel_x"],
+                            json_message["vel_y"],
+                            json_message["vel_z"]
+                        );
+
+                    } else if (type == "change_world_size") {
+
+                        if (!areAllJsonFieldsValid(json_message, worldRequiredFieldsBoundaries)) return;
+
+                        mainWorld.max_x = json_message["max_x"];
+                        mainWorld.max_y = json_message["max_y"];
+                        mainWorld.max_z = json_message["max_z"];
+                        
+                    }  else if (type == "change_world_gravity") {
+
+                        if (!areAllJsonFieldsValid(json_message, worldRequiredFieldsGravity)) return;
+
+                        mainWorld.gravity_accel = json_message["gravity_accel"];
+
+                    } else if (type == "reset_world") {
+                        World newWorld;
+                        std::swap(mainWorld, newWorld);
+                    }
+                }
+
             }
         }
     );
@@ -58,19 +147,26 @@ int main()
     server.start();
     std::cout << "Continuous simulation server running on port 8080\n";
 
-    std::thread simThread([]()
+    std::thread simThread([&mainWorld]()
     {    std::cout << "Starting the Particle Simulator \n\n";
 
-        World mainWorld(100, 100, 100);
+        while (true) {
 
-        mainWorld.particles.emplace_back(10.0f, 1.0f, 2.0f, 3.0f, 5.0f, 10.0f, 15.0f);
-        mainWorld.particles.emplace_back(20.0f, 2.0f, 4.0f, 6.0f, 10.0f, 15.0f, 20.0f);
+            if (!shouldRun) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
 
-        while (true)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            mainWorld.step(0.1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(int(dt*1000)));
+
+            std::vector<Particle> particles_snapshot;
             
+            {
+                std::lock_guard<std::mutex> lock(worldMutex);
+                mainWorld.step(dt);
+                particles_snapshot = mainWorld.particles;
+            }
+
             size_t count = mainWorld.particles.size();
 
             nlohmann::json header;
@@ -80,7 +176,7 @@ int main()
             std::vector<float> buffer;
             buffer.reserve(count * 7);
 
-            for (const auto& p : mainWorld.particles)
+            for (const auto& p : particles_snapshot)
             {   
                 buffer.push_back(p.mass);
                 buffer.push_back(p.x);
@@ -91,9 +187,9 @@ int main()
                 buffer.push_back(p.vel_z);
             }
             
-            if (currentClient) {
-                currentClient->send(header.dump());
-                currentClient->sendBinary(
+            if (auto client = currentClient.load(); client) {
+                client->send(header.dump());
+                client->sendBinary(
                     std::string(reinterpret_cast<char*>(buffer.data()),
                                 buffer.size() * sizeof(float))
                 );
