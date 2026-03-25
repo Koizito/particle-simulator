@@ -16,8 +16,13 @@ std::atomic<ix::WebSocket*> currentClient{nullptr};
 float dt = 1.0f;
 // Should the continuous simulation be running
 std::atomic<bool> shouldRun = false;
+// Should the continuous simulation be exited
+std::atomic<bool> shouldExit = false;
 // Mutex to control the mainWorld access
 std::mutex worldMutex;
+// Mutex and condition variable to control the simulation thread
+std::mutex shouldRunMutex;
+std::condition_variable shouldRunCV;
 
 std::vector<std::string> particleRequiredFields = {
     "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
@@ -52,8 +57,7 @@ int main()
     server.setOnClientMessageCallback(
         [&mainWorld](std::shared_ptr<ix::ConnectionState>,
            ix::WebSocket& webSocket,
-           const std::unique_ptr<ix::WebSocketMessage>& msg)
-        {
+           const std::unique_ptr<ix::WebSocketMessage>& msg)        {
             if (msg->type == ix::WebSocketMessageType::Open) {
 
                 ix::WebSocket* expected = nullptr;
@@ -94,11 +98,28 @@ int main()
 
                     if (type == "start") {
 
-                        shouldRun = true;
+                        {
+                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            shouldRun = true;
+                        }
+                        shouldRunCV.notify_one();
 
                     } else if (type == "stop") {
 
-                        shouldRun = false;
+                        {
+                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            shouldRun = false;
+                        }
+                        shouldRunCV.notify_one();
+
+                    } else if (type == "exit") {
+                    {
+                        {
+                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            shouldRun = false;
+                            shouldExit = true;
+                        }
+                        shouldRunCV.notify_one();
 
                     } else if (type == "create_particle") {
 
@@ -136,6 +157,7 @@ int main()
 
             }
         }
+    }
     );
 
     if (!server.listen().first)
@@ -152,10 +174,14 @@ int main()
 
         while (true) {
 
-            if (!shouldRun) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                continue;
+            {
+                std::unique_lock<std::mutex> lock(shouldRunMutex);
+                shouldRunCV.wait(lock, [] {
+                    return shouldRun || shouldExit;
+                });
             }
+            
+            if (shouldExit) break;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(int(dt*1000)));
 
@@ -167,7 +193,7 @@ int main()
                 particles_snapshot = mainWorld.particles;
             }
 
-            size_t count = mainWorld.particles.size();
+            size_t count = particles_snapshot.size();
 
             nlohmann::json header;
             header["type"] = "particles";
