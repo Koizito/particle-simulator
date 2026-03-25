@@ -10,6 +10,7 @@ add_executable(simulator
     entities/World.cpp
     entities/Particle.cpp
     entities/Force.cpp
+    entities/OutgoingMessage.cpp
 )
 
 find_package(ixwebsocket CONFIG REQUIRED)

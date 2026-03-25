@@ -1,11 +1,13 @@
 #include <atomic>
 #include <cstddef>
 #include "entities/World.hpp"
+#include "entities/OutgoingMessage.hpp"
 #include <IXWebSocketServer.h>
 #include <IXWebSocket.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <queue>
 #include <string>
 #include <thread>
 #include <vector>
@@ -23,6 +25,10 @@ std::mutex worldMutex;
 // Mutex and condition variable to control the simulation thread
 std::mutex shouldRunMutex;
 std::condition_variable shouldRunCV;
+
+std::mutex sendMutex;
+std::queue<OutgoingMessage> sendQueue;
+std::condition_variable sendCV;
 
 std::vector<std::string> particleRequiredFields = {
     "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
@@ -113,7 +119,6 @@ int main()
                         shouldRunCV.notify_one();
 
                     } else if (type == "exit") {
-                    {
                         {
                             std::lock_guard<std::mutex> lock(shouldRunMutex);
                             shouldRun = false;
@@ -157,7 +162,6 @@ int main()
 
             }
         }
-    }
     );
 
     if (!server.listen().first)
@@ -213,17 +217,43 @@ int main()
                 buffer.push_back(p.vel_z);
             }
             
+            {
+                std::lock_guard<std::mutex> lock(sendMutex);
+                sendQueue.push(OutgoingMessage(false, header.dump()));
+                sendQueue.push(OutgoingMessage(true, std::string(reinterpret_cast<char*>(buffer.data()), buffer.size() * sizeof(float))));
+            }
+            sendCV.notify_one();
+        }
+    });
+
+    std::thread sendThread([]() {
+
+        while (true) {
+
+            std::unique_lock<std::mutex> lock(sendMutex);
+
+            sendCV.wait(lock, [] {
+                return !sendQueue.empty() || shouldExit;
+            });
+
+            if (shouldExit) break;
+
+            auto message = sendQueue.front();
+            sendQueue.pop();
+
+            lock.unlock();
+
             if (auto client = currentClient.load(); client) {
-                client->send(header.dump());
-                client->sendBinary(
-                    std::string(reinterpret_cast<char*>(buffer.data()),
-                                buffer.size() * sizeof(float))
-                );
+                if (message.binary)
+                    client->sendBinary(message.data);
+                else
+                    client->send(message.data);
             }
         }
     });
 
     simThread.join();
+    sendThread.join();
 
     server.stop();
     ix::uninitNetSystem();
