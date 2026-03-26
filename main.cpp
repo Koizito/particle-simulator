@@ -3,6 +3,7 @@
 #include "entities/World.hpp"
 #include "entities/OutgoingMessage.hpp"
 #include <IXWebSocketServer.h>
+#include <IXWebSocketSendData.h>
 #include <IXWebSocket.h>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -16,6 +17,8 @@
 std::atomic<ix::WebSocket*> currentClient{nullptr};
 // Default step for simulation
 float dt = 1.0f;
+// Counter for the particles ID assignment
+std::atomic<int> particleIdCounter = 1;
 // Should the continuous simulation be running
 std::atomic<bool> shouldRun = false;
 // Should the continuous simulation be exited
@@ -30,7 +33,15 @@ std::mutex sendMutex;
 std::queue<OutgoingMessage> sendQueue;
 std::condition_variable sendCV;
 
-bool areAllJsonFieldsValid(nlohmann::json json_message, std::vector<std::string> fieldsToCheck)
+std::vector<std::string> particleRequiredFields = {
+    "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
+};
+
+std::vector<std::string> worldRequiredFields = {
+    "max_x", "max_y", "max_z", "gravity_accel"
+};
+
+bool areAllFieldsValid(nlohmann::json json_message, std::vector<std::string> fieldsToCheck)
 {
     for (auto& field : fieldsToCheck) {
         if (!json_message.contains(field)) {
@@ -155,31 +166,63 @@ int main()
                         shouldRunCV.notify_one();
 
                     } else if (type == "create_particle") {
+                        
+                        if (!json_message.contains("particles") || !json_message["particles"].is_array()) {
+                            std::cout << "Missing particles array\n";
+                            return;
+                        }
+                        
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        for (const auto& particle_json : json_message["particles"]) {
+                            if (!areAllFieldsValid(particle_json, particleRequiredFields)) {
+                                std::cout << "Missing particle fields\n";
+                                continue;
+                            }
 
-                        Particle newParticle(
-                            json_message.value("mass", 1.0f),
-                            json_message.value("x", 0.0f),
-                            json_message.value("y", 0.0f),
-                            json_message.value("z", 0.0f),
-                            json_message.value("vel_x", 0.0f),
-                            json_message.value("vel_y", 0.0f),
-                            json_message.value("vel_z", 0.0f)
-                        );
+                            Particle newParticle(
+                                particleIdCounter.fetch_add(1),
+                                particle_json["mass"],
+                                particle_json["x"],
+                                particle_json["y"],
+                                particle_json["z"],
+                                particle_json["vel_x"],
+                                particle_json["vel_y"],
+                                particle_json["vel_z"]
+                            );
 
-                        if (!isValidParticle(newParticle, mainWorld)){
-                            std::cout << "Invalid particle creation\n";
+                            if (!isValidParticle(newParticle, mainWorld)){
+                                std::cout << "Invalid particle creation\n";
+                                continue;
+                            }
+
+                            mainWorld.particles.push_back(std::move(newParticle));
+                        }
+
+                    } else if (type == "delete_particle") {    
+
+                        if (!json_message.contains("particle_ids") || !json_message["particle_ids"].is_array()) {
+                            std::cout << "Missing particle IDs array\n";
                             return;
                         }
 
-                        mainWorld.particles.push_back(std::move(newParticle));
+                        std::vector<int> ids = json_message["particle_ids"].get<std::vector<int>>();
+                        std::unordered_set<int> idsToDelete(ids.begin(), ids.end());
+
+                        std::lock_guard<std::mutex> lock(worldMutex);
+                        mainWorld.deleteParticleById(idsToDelete);
 
                     } else if (type == "update_world") {
 
+                        if (!areAllJsonFieldsValid(json_message, worldRequiredFields)) {
+                            std::cout << "Missing world fields\n";
+                            return;
+                        }
+                        
                         World newWorld(
-                            json_message.value("max_x", 1.0f),
-                            json_message.value("max_y", 1.0f),
-                            json_message.value("max_z", 1.0f),
-                            json_message.value("gravity_accel", -9.81f)
+                            json_message["max_x"],
+                            json_message["max_y"],
+                            json_message["max_z"],
+                            json_message["gravity_accel"]
                         );
 
                         if (!isValidWorld(newWorld)) {
@@ -193,7 +236,7 @@ int main()
 
                         World newWorld;
                         std::swap(mainWorld, newWorld);
-                        
+
                     }
                 }
 
@@ -265,25 +308,25 @@ int main()
             nlohmann::json header;
             header["type"] = "particles";
             header["count"] = count;
-
-            std::vector<float> buffer;
-            buffer.reserve(count * 7);
-
-            for (const auto& p : particles_snapshot)
-            {   
-                buffer.push_back(p.mass);
-                buffer.push_back(p.x);
-                buffer.push_back(p.y);
-                buffer.push_back(p.z);
-                buffer.push_back(p.vel_x);
-                buffer.push_back(p.vel_y);
-                buffer.push_back(p.vel_z);
-            }
             
+            std::vector<uint8_t> buffer_bytes;
+            buffer_bytes.reserve(count * sizeof(int) + count * 7 * sizeof(float));
+
+            for (const auto& p : particles_snapshot) {
+                // ID
+                auto id_ptr = reinterpret_cast<const uint8_t*>(&p.id);
+                buffer_bytes.insert(buffer_bytes.end(), id_ptr, id_ptr + sizeof(int));
+
+                // mass, position, velocity
+                const float arr[] = {p.mass, p.x, p.y, p.z, p.vel_x, p.vel_y, p.vel_z};
+                auto arr_ptr = reinterpret_cast<const uint8_t*>(arr);
+                buffer_bytes.insert(buffer_bytes.end(), arr_ptr, arr_ptr + sizeof(arr));
+            }
+
             {
                 std::lock_guard<std::mutex> lock(sendMutex);
                 sendQueue.push(OutgoingMessage(false, header.dump()));
-                sendQueue.push(OutgoingMessage(true, std::string(reinterpret_cast<char*>(buffer.data()), buffer.size() * sizeof(float))));
+                sendQueue.push(OutgoingMessage(true, ix::IXWebSocketSendData(buffer_bytes)));
             }
             sendCV.notify_one();
         }

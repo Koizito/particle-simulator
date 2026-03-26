@@ -51,3 +51,9 @@ void World::position_velocity_calculation(float  dt, float& pos, float& vel, flo
 float World::acceleration(float force, float mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
 }
+
+void World::deleteParticleById(std::unordered_set<int>& idsToDelete) {
+    auto it = std::remove_if(particles.begin(), particles.end(),
+                             [&idsToDelete](const Particle& p){ return idsToDelete.contains(p.id); });
+    particles.erase(it, particles.end());
+}

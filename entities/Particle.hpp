@@ -2,6 +2,7 @@
 #include "Force.hpp"
 
 struct Particle {
+    int id;
     float mass; // grams
     float x; // meters
     float y; // meters
