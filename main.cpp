@@ -30,18 +30,6 @@ std::mutex sendMutex;
 std::queue<OutgoingMessage> sendQueue;
 std::condition_variable sendCV;
 
-std::vector<std::string> particleRequiredFields = {
-    "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
-};
-
-std::vector<std::string> worldRequiredFieldsBoundaries = {
-    "max_x", "max_y", "max_z"
-};
-
-std::vector<std::string> worldRequiredFieldsGravity = {
-    "max_x", "max_y", "max_z"
-};
-
 bool areAllJsonFieldsValid(nlohmann::json json_message, std::vector<std::string> fieldsToCheck)
 {
     for (auto& field : fieldsToCheck) {
@@ -50,6 +38,46 @@ bool areAllJsonFieldsValid(nlohmann::json json_message, std::vector<std::string>
             return false;
         }
     }
+    return true;
+}
+
+bool isValidWorld(const World& newWorld)
+{
+    // dimension validations
+    if (!std::isfinite(newWorld.max_x) || !std::isfinite(newWorld.max_y) || !std::isfinite(newWorld.max_z)) return false;
+    if (newWorld.max_x < 1.0f || newWorld.max_y < 1.0f || newWorld.max_z < 1.0f) return false;
+    if (newWorld.max_x > 1e6f || newWorld.max_y > 1e6f || newWorld.max_z > 1e6f) return false;
+
+    // gravity acceleration validation
+    if (!std::isfinite(newWorld.gravity_accel) || newWorld.gravity_accel > 1e6f) return false;
+
+    return true;
+}
+
+bool isValidParticle(const Particle& particle, const World& world)
+{
+    // mass validations
+    if (!std::isfinite(particle.mass) || particle.mass < 1e-6f || particle.mass > 1e6f) return false;
+
+    // coordinates validations
+    if (!std::isfinite(particle.x) || !std::isfinite(particle.y) || !std::isfinite(particle.z)) return false;
+    if (particle.x < 0 || particle.x > world.max_x) return false;
+    if (particle.y < 0 || particle.y > world.max_y) return false;
+    if (particle.z < 0 || particle.z > world.max_z) return false;
+
+    // velocity validations
+    if (!std::isfinite(particle.vel_x) || !std::isfinite(particle.vel_y) || !std::isfinite(particle.vel_z)) return false;
+
+    float maxDisplacementX = 10 * world.max_x;
+    float maxDisplacementY = 10 * world.max_y;
+    float maxDisplacementZ = 10 * world.max_z;
+
+    float displacementX = std::abs(particle.vel_x * dt);
+    float displacementY = std::abs(particle.vel_y * dt);
+    float displacementZ = std::abs(particle.vel_z * dt);
+
+    if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ) return false;
+
     return true;
 }
 
@@ -128,35 +156,44 @@ int main()
 
                     } else if (type == "create_particle") {
 
-                        if (!areAllJsonFieldsValid(json_message, particleRequiredFields)) return;
-
-                        mainWorld.particles.emplace_back(
-                            json_message["mass"],
-                            json_message["x"],
-                            json_message["y"],
-                            json_message["z"],
-                            json_message["vel_x"],
-                            json_message["vel_y"],
-                            json_message["vel_z"]
+                        Particle newParticle(
+                            json_message.value("mass", 1.0f),
+                            json_message.value("x", 0.0f),
+                            json_message.value("y", 0.0f),
+                            json_message.value("z", 0.0f),
+                            json_message.value("vel_x", 0.0f),
+                            json_message.value("vel_y", 0.0f),
+                            json_message.value("vel_z", 0.0f)
                         );
 
-                    } else if (type == "change_world_size") {
+                        if (!isValidParticle(newParticle, mainWorld)){
+                            std::cout << "Invalid particle creation\n";
+                            return;
+                        }
 
-                        if (!areAllJsonFieldsValid(json_message, worldRequiredFieldsBoundaries)) return;
+                        mainWorld.particles.push_back(std::move(newParticle));
 
-                        mainWorld.max_x = json_message["max_x"];
-                        mainWorld.max_y = json_message["max_y"];
-                        mainWorld.max_z = json_message["max_z"];
+                    } else if (type == "update_world") {
+
+                        World newWorld(
+                            json_message.value("max_x", 1.0f),
+                            json_message.value("max_y", 1.0f),
+                            json_message.value("max_z", 1.0f),
+                            json_message.value("gravity_accel", -9.81f)
+                        );
+
+                        if (!isValidWorld(newWorld)) {
+                            std::cout << "Invalid world update\n";
+                            return;
+                        }
                         
-                    }  else if (type == "change_world_gravity") {
-
-                        if (!areAllJsonFieldsValid(json_message, worldRequiredFieldsGravity)) return;
-
-                        mainWorld.gravity_accel = json_message["gravity_accel"];
+                        std::swap(mainWorld, newWorld);
 
                     } else if (type == "reset_world") {
+
                         World newWorld;
                         std::swap(mainWorld, newWorld);
+                        
                     }
                 }
 
@@ -172,6 +209,32 @@ int main()
 
     server.start();
     std::cout << "Continuous simulation server running on port 8080\n";
+    
+    std::thread sendThread([]() {
+
+        while (true) {
+
+            std::unique_lock<std::mutex> lock(sendMutex);
+
+            sendCV.wait(lock, [] {
+                return !sendQueue.empty() || shouldExit;
+            });
+
+            if (shouldExit) break;
+
+            auto message = sendQueue.front();
+            sendQueue.pop();
+
+            lock.unlock();
+
+            if (auto client = currentClient.load(); client) {
+                if (message.binary)
+                    client->sendBinary(message.data);
+                else
+                    client->send(message.data);
+            }
+        }
+    });
 
     std::thread simThread([&mainWorld]()
     {    std::cout << "Starting the Particle Simulator \n\n";
@@ -225,34 +288,9 @@ int main()
             sendCV.notify_one();
         }
     });
-
-    std::thread sendThread([]() {
-
-        while (true) {
-
-            std::unique_lock<std::mutex> lock(sendMutex);
-
-            sendCV.wait(lock, [] {
-                return !sendQueue.empty() || shouldExit;
-            });
-
-            if (shouldExit) break;
-
-            auto message = sendQueue.front();
-            sendQueue.pop();
-
-            lock.unlock();
-
-            if (auto client = currentClient.load(); client) {
-                if (message.binary)
-                    client->sendBinary(message.data);
-                else
-                    client->send(message.data);
-            }
-        }
-    });
-
+    
     simThread.join();
+    sendCV.notify_all();
     sendThread.join();
 
     server.stop();
