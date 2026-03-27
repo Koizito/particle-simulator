@@ -1,4 +1,8 @@
 #include "OutgoingMessage.hpp"
 #include <string>
 
-OutgoingMessage::OutgoingMessage(bool input_binary, std::string input_data) : binary(input_binary), data(std::move(input_data)) {}
+    // text
+OutgoingMessage::OutgoingMessage(std::string data) : binary(false), textData(std::move(data)) {}
+
+    // binary
+OutgoingMessage::OutgoingMessage(std::vector<uint8_t> data) : binary(true), binaryData(std::move(data)) {}

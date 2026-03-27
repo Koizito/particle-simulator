@@ -1,4 +1,5 @@
 #include "World.hpp"
+#include <algorithm>
 #include <cmath>
 
 World::World(float input_max_x, float input_max_y, float input_max_z, float input_gravity_accel)
@@ -54,6 +55,9 @@ float World::acceleration(float force, float mass) {
 
 void World::deleteParticleById(std::unordered_set<int>& idsToDelete) {
     auto it = std::remove_if(particles.begin(), particles.end(),
-                             [&idsToDelete](const Particle& p){ return idsToDelete.contains(p.id); });
+        [&idsToDelete](const Particle& p) {
+            return idsToDelete.find(p.id) != idsToDelete.end();
+        });
+        
     particles.erase(it, particles.end());
 }

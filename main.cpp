@@ -11,6 +11,7 @@
 #include <queue>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 // Single client pointer
@@ -213,7 +214,7 @@ int main()
 
                     } else if (type == "update_world") {
 
-                        if (!areAllJsonFieldsValid(json_message, worldRequiredFields)) {
+                        if (!areAllFieldsValid(json_message, worldRequiredFields)) {
                             std::cout << "Missing world fields\n";
                             return;
                         }
@@ -271,10 +272,12 @@ int main()
             lock.unlock();
 
             if (auto client = currentClient.load(); client) {
-                if (message.binary)
-                    client->sendBinary(message.data);
-                else
-                    client->send(message.data);
+                if (message.binary) {
+                    ix::IXWebSocketSendData data(message.binaryData);
+                    client->sendBinary(data);
+                } else {
+                    client->send(message.textData);
+                }
             }
         }
     });
@@ -325,8 +328,8 @@ int main()
 
             {
                 std::lock_guard<std::mutex> lock(sendMutex);
-                sendQueue.push(OutgoingMessage(false, header.dump()));
-                sendQueue.push(OutgoingMessage(true, ix::IXWebSocketSendData(buffer_bytes)));
+                sendQueue.push(OutgoingMessage(header.dump()));
+                sendQueue.push(OutgoingMessage(std::move(buffer_bytes)));
             }
             sendCV.notify_one();
         }
