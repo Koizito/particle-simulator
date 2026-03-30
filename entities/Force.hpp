@@ -5,8 +5,8 @@ struct Force {
     float x; // newton
     float y; // newton
     float z; // newton
-    
-    Force(float input_x=0.0f, float input_y=0.0f, float input_z=0.0f);
+
+    explicit Force(float input_x=0.0f, float input_y=0.0f, float input_z=0.0f);
 };
 
 inline void to_json(nlohmann::json& j, const Force& f) {
