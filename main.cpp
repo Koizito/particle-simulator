@@ -33,17 +33,19 @@ std::mutex sendMutex;
 std::queue<OutgoingMessage> sendQueue;
 std::condition_variable sendCV;
 
-std::vector<std::string> particleRequiredFields = {
+constexpr int MAX_STEPS_PER_FRAME = 10;
+
+const std::vector<std::string> particleRequiredFields = {
     "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
 };
 
-std::vector<std::string> worldRequiredFields = {
+const std::vector<std::string> worldRequiredFields = {
     "max_x", "max_y", "max_z", "gravity_accel"
 };
 
-bool areAllFieldsValid(nlohmann::json json_message, std::vector<std::string> fieldsToCheck)
+bool areAllFieldsValid(const nlohmann::json& json_message, const std::vector<std::string>& fieldsToCheck)
 {
-    for (auto& field : fieldsToCheck) {
+    for (const auto& field : fieldsToCheck) {
         if (!json_message.contains(field)) {
             std::cerr << "Missing field: " << field << "\n";
             return false;
@@ -100,7 +102,7 @@ int main()
     World mainWorld;
 
     server.setOnClientMessageCallback(
-        [&mainWorld](std::shared_ptr<ix::ConnectionState>,
+        [&mainWorld](const std::shared_ptr<ix::ConnectionState>&,
            ix::WebSocket& webSocket,
            const std::unique_ptr<ix::WebSocketMessage>& msg)        {
             if (msg->type == ix::WebSocketMessageType::Open) {
@@ -144,7 +146,7 @@ int main()
                     if (type == "start") {
 
                         {
-                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            std::lock_guard<std::mutex> startLock(shouldRunMutex);
                             shouldRun = true;
                         }
                         shouldRunCV.notify_one();
@@ -152,14 +154,14 @@ int main()
                     } else if (type == "stop") {
 
                         {
-                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            std::lock_guard<std::mutex> stopLock(shouldRunMutex);
                             shouldRun = false;
                         }
                         shouldRunCV.notify_one();
 
                     } else if (type == "exit") {
                         {
-                            std::lock_guard<std::mutex> lock(shouldRunMutex);
+                            std::lock_guard<std::mutex> exitLock(shouldRunMutex);
                             shouldRun = false;
                             shouldExit = true;
                         }
@@ -172,7 +174,7 @@ int main()
                             return;
                         }
                         
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        std::lock_guard<std::mutex> createParticleLock(worldMutex);
                         for (const auto& particle_json : json_message["particles"]) {
                             if (!areAllFieldsValid(particle_json, particleRequiredFields)) {
                                 std::cout << "Missing particle fields\n";
@@ -208,7 +210,7 @@ int main()
                         std::vector<int> ids = json_message["particle_ids"].get<std::vector<int>>();
                         std::unordered_set<int> idsToDelete(ids.begin(), ids.end());
 
-                        std::lock_guard<std::mutex> lock(worldMutex);
+                        std::lock_guard<std::mutex> deleteParticleLock(worldMutex);
                         mainWorld.deleteParticleById(idsToDelete);
 
                     } else if (type == "update_world") {
@@ -231,31 +233,28 @@ int main()
                         }
                         
                         {
-                            std::lock_guard<std::mutex> lock(worldMutex);
+                            std::lock_guard<std::mutex> updateWorldLock(worldMutex);
                             std::swap(mainWorld, newWorld);
                         }
 
                     } else if (type == "reset_world") {
 
-                        World newWorld;
-                        {
-                            std::lock_guard<std::mutex> lock(worldMutex);
-                            std::swap(mainWorld, newWorld);
-                        }
+                    World newWorld;
+                    std::lock_guard<std::mutex> resetWorldLock(worldMutex);
+                    std::swap(mainWorld, newWorld);
 
                     } else if (type == "get_world_snapshot") {
 
                         World snapshotWorld;
                         {
-                            std::lock_guard<std::mutex> lock(worldMutex);
+                            std::lock_guard<std::mutex> getWorldSnapshotLock(worldMutex);
                             snapshotWorld = mainWorld;
                         }
 
-                        nlohmann::json snapshot = snapshotWorld;
-
                         {
-                            std::lock_guard<std::mutex> lock(sendMutex);
-                            sendQueue.push(OutgoingMessage(snapshot.dump()));
+                            nlohmann::json snapshot = snapshotWorld;
+                            std::lock_guard<std::mutex> pushWorldSnapshotLock(sendMutex);
+                            sendQueue.emplace(snapshot.dump());
                         }
                     }
                 }
@@ -304,24 +303,42 @@ int main()
     std::thread simThread([&mainWorld]()
     {    std::cout << "Starting the Particle Simulator \n\n";
 
+        using clock = std::chrono::steady_clock;
+        auto next = clock::now();
+
         while (true) {
 
             {
-                std::unique_lock<std::mutex> lock(shouldRunMutex);
-                shouldRunCV.wait(lock, [] {
+                std::unique_lock<std::mutex> shouldRunLock(shouldRunMutex);
+                shouldRunCV.wait(shouldRunLock, [] {
                     return shouldRun || shouldExit;
                 });
             }
             
             if (shouldExit) break;
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(int(dt*1000)));
+            int steps = 0;
+            auto now = clock::now();
 
+            while (now >= next && steps < MAX_STEPS_PER_FRAME) {
+
+                {
+                    std::lock_guard<std::mutex> stepLock(worldMutex);
+                    mainWorld.step(dt);
+                }
+
+                next += std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(dt));
+                steps++;
+            }
+
+            if (steps >= MAX_STEPS_PER_FRAME) {
+                next = clock::now();
+            }
+
+            // Snapshot AFTER stepping (only once per frame)
             std::vector<Particle> particles_snapshot;
-            
             {
                 std::lock_guard<std::mutex> lock(worldMutex);
-                mainWorld.step(dt);
                 particles_snapshot = mainWorld.particles;
             }
 
@@ -347,8 +364,8 @@ int main()
 
             {
                 std::lock_guard<std::mutex> lock(sendMutex);
-                sendQueue.push(OutgoingMessage(metadata.dump()));
-                sendQueue.push(OutgoingMessage(std::move(buffer_bytes)));
+                sendQueue.emplace(metadata.dump());
+                sendQueue.emplace(std::move(buffer_bytes));
             }
             sendCV.notify_one();
         }

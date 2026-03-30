@@ -14,11 +14,11 @@ struct World {
     
     std::vector<Particle> particles;
 
-    World(float input_max_x=1.0f, float input_max_y=1.0f, float input_max_z=1.0f, float input_gravity_accel=9.81f);
+    explicit World(float input_max_x=1.0f, float input_max_y=1.0f, float input_max_z=1.0f, float input_gravity_accel=9.81f);
 
-    void step(float  dt);
-    void position_velocity_calculation(float  dt, float& pos, float& vel, float accel, float max);
-    float acceleration(float force, float mass);
+    void step(float& dt);
+    static void position_velocity_calculation(float&  dt, float& pos, float& vel, float& accel, float& max);
+    static float acceleration_calculation(float force, float mass);
     void deleteParticleById(std::unordered_set<int>& idsToDelete);
 };
 

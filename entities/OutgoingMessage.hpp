@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -7,7 +8,7 @@ struct OutgoingMessage {
     std::string textData;
     std::vector<uint8_t> binaryData;
 
-    OutgoingMessage(std::string data);
+    explicit OutgoingMessage(std::string data);
 
-    OutgoingMessage(std::vector<uint8_t> data);
+    explicit OutgoingMessage(std::vector<uint8_t> data);
 };

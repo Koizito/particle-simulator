@@ -4,18 +4,19 @@
 #include <vector>
 
 struct Particle {
-    int id;
-    float mass; // grams
-    float x; // meters
-    float y; // meters
-    float z; // meters
-    float vel_x; // meters/second
-    float vel_y; // meters/second
-    float vel_z; // meters/second
+    int id{};
+    float mass{}; // grams
+    float x{}; // meters
+    float y{}; // meters
+    float z{}; // meters
+    float vel_x{}; // meters/second
+    float vel_y{}; // meters/second
+    float vel_z{}; // meters/second
     std::vector<Force> forces;
 
     Particle() = default;
-    Particle(int input_id, float input_mass=1.0f, float input_x=0.0f, float input_y=0.0f, float input_z=0.0f, float input_vel_x=0.0f, float input_vel_y=0.0f, float input_vel_z=0.0f);
+
+    explicit Particle(int input_id, float input_mass=1.0f, float input_x=0.0f, float input_y=0.0f, float input_z=0.0f, float input_vel_x=0.0f, float input_vel_y=0.0f, float input_vel_z=0.0f);
 };
 
 inline void to_json(nlohmann::json& j, const Particle& p) {
