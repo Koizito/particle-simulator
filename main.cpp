@@ -11,7 +11,6 @@
 #include <queue>
 #include <string>
 #include <thread>
-#include <unordered_set>
 #include <vector>
 
 // Single client pointer
@@ -231,13 +230,33 @@ int main()
                             return;
                         }
                         
-                        std::swap(mainWorld, newWorld);
+                        {
+                            std::lock_guard<std::mutex> lock(worldMutex);
+                            std::swap(mainWorld, newWorld);
+                        }
 
                     } else if (type == "reset_world") {
 
                         World newWorld;
-                        std::swap(mainWorld, newWorld);
+                        {
+                            std::lock_guard<std::mutex> lock(worldMutex);
+                            std::swap(mainWorld, newWorld);
+                        }
 
+                    } else if (type == "get_world_snapshot") {
+
+                        World snapshotWorld;
+                        {
+                            std::lock_guard<std::mutex> lock(worldMutex);
+                            snapshotWorld = mainWorld;
+                        }
+
+                        nlohmann::json snapshot = snapshotWorld;
+
+                        {
+                            std::lock_guard<std::mutex> lock(sendMutex);
+                            sendQueue.push(OutgoingMessage(snapshot.dump()));
+                        }
                     }
                 }
 
@@ -308,9 +327,9 @@ int main()
 
             size_t count = particles_snapshot.size();
 
-            nlohmann::json header;
-            header["type"] = "particles";
-            header["count"] = count;
+            nlohmann::json metadata;
+            metadata["type"] = "particles";
+            metadata["count"] = count;
             
             std::vector<uint8_t> buffer_bytes;
             buffer_bytes.reserve(count * sizeof(int) + count * 7 * sizeof(float));
@@ -328,7 +347,7 @@ int main()
 
             {
                 std::lock_guard<std::mutex> lock(sendMutex);
-                sendQueue.push(OutgoingMessage(header.dump()));
+                sendQueue.push(OutgoingMessage(metadata.dump()));
                 sendQueue.push(OutgoingMessage(std::move(buffer_bytes)));
             }
             sendCV.notify_one();
