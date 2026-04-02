@@ -5,7 +5,7 @@
 World::World(float input_max_x, float input_max_y, float input_max_z, float input_gravity_accel)
     : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), gravity_accel(input_gravity_accel) {}
 
-void World::step(float dt) {
+void World::step(float& dt) {
     
     for (Particle& particle : particles) {
         float particle_force_x = 0;
@@ -18,9 +18,9 @@ void World::step(float dt) {
             particle_force_z = particle_force_z + force.z;
         }
 
-        float accel_x = acceleration(particle_force_x, particle.mass);
-        float accel_y = acceleration(particle_force_y, particle.mass);
-        float accel_z = acceleration(particle_force_z, particle.mass) + gravity_accel;
+        float accel_x = acceleration_calculation(particle_force_x, particle.mass);
+        float accel_y = acceleration_calculation(particle_force_y, particle.mass);
+        float accel_z = acceleration_calculation(particle_force_z, particle.mass) + gravity_accel;
 
         position_velocity_calculation(dt, particle.x, particle.vel_x, accel_x, max_x);
         position_velocity_calculation(dt, particle.y, particle.vel_y, accel_y, max_y);
@@ -28,7 +28,7 @@ void World::step(float dt) {
     }
 }
 
-void World::position_velocity_calculation(float  dt, float& pos, float& vel, float accel, float max) {
+void World::position_velocity_calculation(float& dt, float& pos, float& vel, float& accel, float& max) {
     float L = max;
     float period = 2*L;
 
@@ -49,7 +49,7 @@ void World::position_velocity_calculation(float  dt, float& pos, float& vel, flo
     }
 }
 
-float World::acceleration(float force, float mass) {
+float World::acceleration_calculation(float force, float mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
 }
 

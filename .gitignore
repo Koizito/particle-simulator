@@ -41,8 +41,10 @@
 *.dwo
 
 build/
+cmake-build-debug/
 .vscode/
 .cache/
+.idea/
 
 user_stories.md
 compile_commands.json
