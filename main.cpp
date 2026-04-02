@@ -15,8 +15,6 @@
 
 // Single client pointer
 std::atomic<ix::WebSocket*> currentClient{nullptr};
-// Default step for simulation
-float dt = 1.0f;
 // Counter for the particles ID assignment
 std::atomic<int> particleIdCounter = 1;
 // Should the continuous simulation be running
@@ -89,9 +87,9 @@ bool isValidParticle(const Particle& particle, const World& world)
     float maxDisplacementY = 10 * world.max_y;
     float maxDisplacementZ = 10 * world.max_z;
 
-    float displacementX = std::abs(particle.vel_x * dt);
-    float displacementY = std::abs(particle.vel_y * dt);
-    float displacementZ = std::abs(particle.vel_z * dt);
+    float displacementX = std::abs(particle.vel_x * world.dt);
+    float displacementY = std::abs(particle.vel_y * world.dt);
+    float displacementZ = std::abs(particle.vel_z * world.dt);
 
     if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ) return false;
 
@@ -228,10 +226,11 @@ int main()
                     }
 
                     World newWorld(
-                        json_message["max_x"],
-                        json_message["max_y"],
-                        json_message["max_z"],
-                        json_message["gravity_accel"]
+                        json_message.value("max_x", mainWorld.max_x),
+                        json_message.value("max_y", mainWorld.max_y),
+                        json_message.value("max_z", mainWorld.max_z),
+                        json_message.value("dt", mainWorld.dt),
+                        json_message.value("gravity_accel", mainWorld.gravity_accel)
                     );
 
                     if (!isValidWorld(newWorld)) {
@@ -251,6 +250,7 @@ int main()
                 std::swap(mainWorld, newWorld);
 
                 } else if (type == "get_world_snapshot") {
+
                     World snapshotWorld;
                     {
                         std::lock_guard<std::mutex> getWorldSnapshotLock(worldMutex);
@@ -264,6 +264,7 @@ int main()
                         highPrioritySendQueue.emplace(snapshotJson.dump());
                     }
                     shouldSendCV.notify_one();
+                    
                 }
             }
         }
@@ -349,10 +350,10 @@ int main()
 
                 {
                     std::lock_guard<std::mutex> stepLock(worldMutex);
-                    mainWorld.step(dt);
+                    mainWorld.step();
                 }
 
-                next += std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(dt));
+                next += std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(mainWorld.dt));
                 steps++;
             }
 
@@ -360,7 +361,6 @@ int main()
                 next = clock::now();
             }
 
-            // Snapshot AFTER stepping (only once per frame)
             std::vector<Particle> particles_snapshot;
             {
                 std::lock_guard<std::mutex> lock(worldMutex);

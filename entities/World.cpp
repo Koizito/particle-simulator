@@ -2,10 +2,10 @@
 #include <algorithm>
 #include <cmath>
 
-World::World(float input_max_x, float input_max_y, float input_max_z, float input_gravity_accel)
-    : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), gravity_accel(input_gravity_accel) {}
+World::World(float input_max_x, float input_max_y, float input_max_z, float input_dt, float input_gravity_accel)
+    : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), dt(input_dt), gravity_accel(input_gravity_accel) {}
 
-void World::step(float& dt) {
+void World::step() {
     
     for (Particle& particle : particles) {
         float particle_force_x = 0;
@@ -22,13 +22,13 @@ void World::step(float& dt) {
         float accel_y = acceleration_calculation(particle_force_y, particle.mass);
         float accel_z = acceleration_calculation(particle_force_z, particle.mass) + gravity_accel;
 
-        position_velocity_calculation(dt, particle.x, particle.vel_x, accel_x, max_x);
-        position_velocity_calculation(dt, particle.y, particle.vel_y, accel_y, max_y);
-        position_velocity_calculation(dt, particle.z, particle.vel_z, accel_z, max_z);
+        position_velocity_calculation(particle.x, particle.vel_x, accel_x, max_x);
+        position_velocity_calculation(particle.y, particle.vel_y, accel_y, max_y);
+        position_velocity_calculation(particle.z, particle.vel_z, accel_z, max_z);
     }
 }
 
-void World::position_velocity_calculation(float& dt, float& pos, float& vel, float& accel, float& max) {
+void World::position_velocity_calculation(float& pos, float& vel, float& accel, float& max) {
     float L = max;
     float period = 2*L;
 

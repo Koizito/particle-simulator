@@ -10,14 +10,16 @@ struct World {
     float max_y;
     float max_z;
 
+    float dt;
+
     float gravity_accel;
     
     std::vector<Particle> particles;
 
-    explicit World(float input_max_x=1.0f, float input_max_y=1.0f, float input_max_z=1.0f, float input_gravity_accel=9.81f);
+    explicit World(float input_max_x=1.0f, float input_max_y=1.0f, float input_max_z=1.0f, float input_dt=1.0f, float input_gravity_accel=9.81f);
 
-    void step(float& dt);
-    static void position_velocity_calculation(float&  dt, float& pos, float& vel, float& accel, float& max);
+    void step();
+    static void position_velocity_calculation(float& pos, float& vel, float& accel, float& max);
     static float acceleration_calculation(float force, float mass);
     void deleteParticleById(std::unordered_set<int>& idsToDelete);
 };

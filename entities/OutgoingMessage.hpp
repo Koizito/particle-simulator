@@ -4,7 +4,7 @@
 #include <vector>
 
 struct OutgoingMessage {
-    bool binary{};
+    bool binary;
     std::string textData;
     std::vector<uint8_t> binaryData;
 

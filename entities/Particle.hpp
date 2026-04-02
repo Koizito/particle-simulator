@@ -4,14 +4,14 @@
 #include <vector>
 
 struct Particle {
-    int id{};
-    float mass{}; // grams
-    float x{}; // meters
-    float y{}; // meters
-    float z{}; // meters
-    float vel_x{}; // meters/second
-    float vel_y{}; // meters/second
-    float vel_z{}; // meters/second
+    int id;
+    float mass; // grams
+    float x; // meters
+    float y; // meters
+    float z; // meters
+    float vel_x; // meters/second
+    float vel_y; // meters/second
+    float vel_z; // meters/second
     std::vector<Force> forces;
 
     Particle() = default;
