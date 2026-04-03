@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include "Particle.hpp"
 #include <unordered_set>
 #include <vector>
@@ -9,19 +10,24 @@ struct World {
     float max_x;
     float max_y;
     float max_z;
-
     float dt;
-
     float gravity_accel;
-    
+
+    // Counter for the particles ID assignment
+    std::atomic<int> particleIdCounter = 1;
+
     std::vector<Particle> particles;
 
     explicit World(float input_max_x=1.0f, float input_max_y=1.0f, float input_max_z=1.0f, float input_dt=1.0f, float input_gravity_accel=9.81f);
 
     void step();
-    static void position_velocity_calculation(float& pos, float& vel, float& accel, float& max);
-    static float acceleration_calculation(float force, float mass);
+    void positionVelocityCalculation(float& pos, float& vel, float& accel, float& max) const;
+    static float accelerationCalculation(float force, float mass);
+    bool addParticle(const nlohmann::json& particleJson);
+    bool addParticle(Particle& particle);
+    [[nodiscard]] bool isValidParticle(const Particle& particle) const;
     void deleteParticleById(std::unordered_set<int>& idsToDelete);
+    void fillSnapshot(World &copy) const;
 };
 
 inline void to_json(nlohmann::json& j, const World& w) {
