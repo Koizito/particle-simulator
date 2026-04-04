@@ -15,10 +15,6 @@
 
 // Single client pointer
 std::atomic<ix::WebSocket*> currentClient{nullptr};
-// Default step for simulation
-float dt = 1.0f;
-// Counter for the particles ID assignment
-std::atomic<int> particleIdCounter = 1;
 // Should the continuous simulation be running
 std::atomic<bool> shouldRun = false;
 // Should the send threah be running
@@ -38,14 +34,6 @@ std::queue<OutgoingMessage> normalSendQueue;
 
 constexpr int MAX_STEPS_PER_FRAME = 10;
 constexpr size_t MAX_QUEUE_SIZE = 100;
-
-const std::vector<std::string> particleRequiredFields = {
-    "mass", "x", "y", "z", "vel_x", "vel_y", "vel_z"
-};
-
-const std::vector<std::string> worldRequiredFields = {
-    "max_x", "max_y", "max_z", "gravity_accel"
-};
 
 bool areAllFieldsValid(const nlohmann::json& json_message, const std::vector<std::string>& fieldsToCheck)
 {
@@ -67,33 +55,6 @@ bool isValidWorld(const World& newWorld)
 
     // gravity acceleration validation
     if (!std::isfinite(newWorld.gravity_accel) || newWorld.gravity_accel > 1e6f) return false;
-
-    return true;
-}
-
-bool isValidParticle(const Particle& particle, const World& world)
-{
-    // mass validations
-    if (!std::isfinite(particle.mass) || particle.mass < 1e-6f || particle.mass > 1e6f) return false;
-
-    // coordinates validations
-    if (!std::isfinite(particle.x) || !std::isfinite(particle.y) || !std::isfinite(particle.z)) return false;
-    if (particle.x < 0 || particle.x > world.max_x) return false;
-    if (particle.y < 0 || particle.y > world.max_y) return false;
-    if (particle.z < 0 || particle.z > world.max_z) return false;
-
-    // velocity validations
-    if (!std::isfinite(particle.vel_x) || !std::isfinite(particle.vel_y) || !std::isfinite(particle.vel_z)) return false;
-
-    float maxDisplacementX = 10 * world.max_x;
-    float maxDisplacementY = 10 * world.max_y;
-    float maxDisplacementZ = 10 * world.max_z;
-
-    float displacementX = std::abs(particle.vel_x * dt);
-    float displacementY = std::abs(particle.vel_y * dt);
-    float displacementZ = std::abs(particle.vel_z * dt);
-
-    if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ) return false;
 
     return true;
 }
@@ -182,29 +143,11 @@ int main()
                     }
 
                     std::lock_guard<std::mutex> createParticleLock(worldMutex);
-                    for (const auto& particle_json : json_message["particles"]) {
-                        if (!areAllFieldsValid(particle_json, particleRequiredFields)) {
-                            std::cout << "Missing particle fields\n";
-                            continue;
-                        }
-
-                        Particle newParticle(
-                            particleIdCounter.fetch_add(1),
-                            particle_json["mass"],
-                            particle_json["x"],
-                            particle_json["y"],
-                            particle_json["z"],
-                            particle_json["vel_x"],
-                            particle_json["vel_y"],
-                            particle_json["vel_z"]
-                        );
-
-                        if (!isValidParticle(newParticle, mainWorld)){
+                    for (const auto& particleJson : json_message["particles"]) {
+                        if (!mainWorld.addParticle(particleJson)) {
                             std::cout << "Invalid particle creation\n";
                             continue;
                         }
-
-                        mainWorld.particles.push_back(std::move(newParticle));
                     }
 
                 } else if (type == "delete_particle") {
@@ -221,17 +164,12 @@ int main()
                     mainWorld.deleteParticleById(idsToDelete);
 
                 } else if (type == "update_world") {
-
-                    if (!areAllFieldsValid(json_message, worldRequiredFields)) {
-                        std::cout << "Missing world fields\n";
-                        return;
-                    }
-
                     World newWorld(
-                        json_message["max_x"],
-                        json_message["max_y"],
-                        json_message["max_z"],
-                        json_message["gravity_accel"]
+                        json_message.value("max_x", mainWorld.max_x),
+                        json_message.value("max_y", mainWorld.max_y),
+                        json_message.value("max_z", mainWorld.max_z),
+                        json_message.value("dt", mainWorld.dt),
+                        json_message.value("gravity_accel", mainWorld.gravity_accel)
                     );
 
                     if (!isValidWorld(newWorld)) {
@@ -241,20 +179,35 @@ int main()
 
                     {
                         std::lock_guard<std::mutex> updateWorldLock(worldMutex);
-                        std::swap(mainWorld, newWorld);
+                        mainWorld.max_x = newWorld.max_x;
+                        mainWorld.max_y = newWorld.max_y;
+                        mainWorld.max_z = newWorld.max_z;
+                        mainWorld.dt = newWorld.dt;
+                        mainWorld.gravity_accel = newWorld.gravity_accel;
+
+                        mainWorld.particles = std::move(newWorld.particles);
+                        mainWorld.particleIdCounter = newWorld.particleIdCounter.load();
                     }
 
                 } else if (type == "reset_world") {
 
-                World newWorld;
-                std::lock_guard<std::mutex> resetWorldLock(worldMutex);
-                std::swap(mainWorld, newWorld);
+                    World newWorld;
+                    std::lock_guard<std::mutex> resetWorldLock(worldMutex);
+                    mainWorld.max_x = newWorld.max_x;
+                    mainWorld.max_y = newWorld.max_y;
+                    mainWorld.max_z = newWorld.max_z;
+                    mainWorld.dt = newWorld.dt;
+                    mainWorld.gravity_accel = newWorld.gravity_accel;
+
+                    mainWorld.particles = std::move(newWorld.particles);
+                    mainWorld.particleIdCounter = newWorld.particleIdCounter.load();
 
                 } else if (type == "get_world_snapshot") {
+
                     World snapshotWorld;
                     {
                         std::lock_guard<std::mutex> getWorldSnapshotLock(worldMutex);
-                        snapshotWorld = mainWorld;
+                        mainWorld.fillSnapshot(snapshotWorld);
                     }
 
                     {
@@ -264,6 +217,7 @@ int main()
                         highPrioritySendQueue.emplace(snapshotJson.dump());
                     }
                     shouldSendCV.notify_one();
+                    
                 }
             }
         }
@@ -349,10 +303,10 @@ int main()
 
                 {
                     std::lock_guard<std::mutex> stepLock(worldMutex);
-                    mainWorld.step(dt);
+                    mainWorld.step();
                 }
 
-                next += std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(dt));
+                next += std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(mainWorld.dt));
                 steps++;
             }
 
@@ -360,7 +314,6 @@ int main()
                 next = clock::now();
             }
 
-            // Snapshot AFTER stepping (only once per frame)
             std::vector<Particle> particles_snapshot;
             {
                 std::lock_guard<std::mutex> lock(worldMutex);
