@@ -9,6 +9,8 @@ struct OutgoingMessage {
     std::vector<uint8_t> binaryData;
 
     OutgoingMessage() = default;
-    explicit OutgoingMessage(std::string data);
-    explicit OutgoingMessage(std::vector<uint8_t> data);
+
+    OutgoingMessage(std::string data);
+
+    OutgoingMessage(std::vector<uint8_t> data);
 };
