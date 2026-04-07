@@ -29,7 +29,7 @@ bool NetworkingHandler::startServer() {
                 try {
                     json_message = nlohmann::json::parse(msg->str);
                 } catch (...) {
-                    std::cout << "Problem parsing the JSON!";
+                    std::cout << "Problem parsing the JSON!\n";
                     return;
                 }
 
@@ -54,7 +54,7 @@ bool NetworkingHandler::startServer() {
                     this->appCtx.checkIfSendThreadShouldRun.notify_all();
                 } else if (type == "exit") {
                     this->appCtx.signalExit();
-                } else if (type == "create_particle") {
+                } else if (type == "create_particles") {
                     if (!json_message.contains("particles") || !json_message["particles"].is_array()) {
                         std::cout << "Missing particles array\n";
                         return;
@@ -67,7 +67,7 @@ bool NetworkingHandler::startServer() {
                             continue;
                         }
                     }
-                } else if (type == "delete_particle") {
+                } else if (type == "delete_particles") {
                     if (!json_message.contains("particle_ids") || !json_message["particle_ids"].is_array()) {
                         std::cout << "Missing particle IDs array\n";
                         return;

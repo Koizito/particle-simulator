@@ -18,7 +18,7 @@ struct World {
 
     std::vector<Particle> particles;
 
-    World(float input_max_x = 1.0f, float input_max_y = 1.0f, float input_max_z = 1.0f, float input_dt = 1.0f,
+    World(float input_max_x = 1.0f, float input_max_y = 1.0f, float input_max_z = 1.0f, float input_dt = 0.1f,
           float input_gravity_accel = 9.81f);
 
     void step();
@@ -45,6 +45,7 @@ inline void to_json(nlohmann::json &j, const World &w) {
         {"max_x", w.max_x},
         {"max_y", w.max_y},
         {"max_z", w.max_z},
+        {"dt", w.dt},
         {"gravity_accel", w.gravity_accel},
         {"particles", w.particles},
     };
@@ -54,6 +55,7 @@ inline void from_json(const nlohmann::json &j, World &w) {
     j.at("max_x").get_to(w.max_x);
     j.at("max_y").get_to(w.max_y);
     j.at("max_z").get_to(w.max_z);
+    j.at("dt").get_to(w.dt);
     j.at("gravity_accel").get_to(w.gravity_accel);
     j.at("particles").get_to(w.particles);
 }
