@@ -16,9 +16,8 @@ add_executable(simulator
         networking/NetworkHandler.cpp
         app/AppContext.cpp
         threads/SimulationThread.cpp
-        threads/SimulationThread.hpp
         threads/SendThread.cpp
-        threads/SendThread.hpp
+        threads/BaseThread.cpp
 )
 
 find_package(ixwebsocket REQUIRED)

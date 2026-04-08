@@ -1,6 +1,6 @@
-include "BaseThread.hpp"
+#include "BaseThread.hpp"
 
-BaseThread::BaseThread(AppContext &inputAppCtx)
+BaseThread::BaseThread(AppContext& inputAppCtx)
     : appCtx(inputAppCtx) {
 }
 

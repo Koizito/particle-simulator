@@ -5,11 +5,13 @@
 #include "app/AppContext.hpp"
 
 class NetworkingHandler {
-    AppContext &appCtx;
+    AppContext& appCtx;
     ix::WebSocketServer server;
 
 public:
-    NetworkingHandler(AppContext &inputAppCtx);
+    explicit NetworkingHandler(AppContext& inputAppCtx);
+
     [[nodiscard]] bool startServer();
+
     void stopServer();
 };

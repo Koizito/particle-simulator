@@ -1,17 +1,17 @@
 #include "NetworkingHandler.hpp"
 
-NetworkingHandler::NetworkingHandler(AppContext &inputAppCtx)
+NetworkingHandler::NetworkingHandler(AppContext& inputAppCtx)
     : appCtx(inputAppCtx), server(8080, "0.0.0.0") {
 }
 
 bool NetworkingHandler::startServer() {
     ix::initNetSystem();
     server.setOnClientMessageCallback(
-        [this](const std::shared_ptr<ix::ConnectionState> &,
-               ix::WebSocket &webSocket,
-               const std::unique_ptr<ix::WebSocketMessage> &msg) {
+        [this](const std::shared_ptr<ix::ConnectionState>&,
+               ix::WebSocket& webSocket,
+               const std::unique_ptr<ix::WebSocketMessage>& msg) {
             if (msg->type == ix::WebSocketMessageType::Open) {
-                ix::WebSocket *expected = nullptr;
+                ix::WebSocket* expected = nullptr;
                 if (!this->appCtx.currentClient.compare_exchange_strong(expected, &webSocket)) {
                     webSocket.send("Server busy");
                     webSocket.close();
@@ -19,7 +19,7 @@ bool NetworkingHandler::startServer() {
                 }
                 std::cout << "Client connected\n";
             } else if (msg->type == ix::WebSocketMessageType::Close) {
-                ix::WebSocket *expected = &webSocket;
+                ix::WebSocket* expected = &webSocket;
                 this->appCtx.currentClient.compare_exchange_strong(expected, nullptr);
 
                 std::cout << "Client disconnected\n";
@@ -61,7 +61,7 @@ bool NetworkingHandler::startServer() {
                     }
 
                     std::lock_guard<std::mutex> createParticleLock(this->appCtx.worldMutex);
-                    for (const auto &particleJson: json_message["particles"]) {
+                    for (const auto& particleJson: json_message["particles"]) {
                         if (!this->appCtx.mainWorld.addParticle(particleJson)) {
                             std::cout << "Invalid particle creation\n";
                             continue;

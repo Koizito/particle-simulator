@@ -16,7 +16,9 @@ struct Particle {
 
     Particle() = default;
 
-    Particle(int input_id, float input_mass=1.0f, float input_x=0.0f, float input_y=0.0f, float input_z=0.0f, float input_vel_x=0.0f, float input_vel_y=0.0f, float input_vel_z=0.0f);
+    explicit Particle(int input_id, float input_mass = 1.0f, float input_x = 0.0f, float input_y = 0.0f,
+                      float input_z = 0.0f, float input_vel_x = 0.0f, float input_vel_y = 0.0f,
+                      float input_vel_z = 0.0f);
 };
 
 inline void to_json(nlohmann::json& j, const Particle& p) {

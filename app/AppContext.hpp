@@ -37,6 +37,7 @@ struct AppContext {
     size_t MAX_QUEUE_SIZE = 100;
 
     AppContext() = default;
+
     AppContext(int input_maxStepsPerFrame, size_t input_maxQueueSize);
 
     void signalExit();

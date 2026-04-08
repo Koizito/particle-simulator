@@ -1,8 +1,12 @@
 #include "SendThread.hpp"
 
+SendThread::SendThread(AppContext& inputAppCtx)
+    : BaseThread(inputAppCtx) {
+}
+
 void SendThread::runThread() {
-    try{
-   while (true) {
+    try {
+        while (true) {
             std::unique_lock<std::mutex> sendLock(this->appCtx.sendThreadMutex);
             waitForStartSignal(sendLock);
 
@@ -13,9 +17,9 @@ void SendThread::runThread() {
             sendLock.unlock();
 
             if (message.textData.empty() && message.binaryData.empty()) {
-               continue;
+                continue;
             }
-            
+
             sendMessage(message);
 
             this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
@@ -29,14 +33,14 @@ void SendThread::runThread() {
     }
 }
 
-void SendThread::waitForStartSignal(std::unique_lock<std::mutex>& sendLock) {
+void SendThread::waitForStartSignal(std::unique_lock<std::mutex>& sendLock) const {
     this->appCtx.checkIfSendThreadShouldRun.wait(sendLock, [this] {
         return (this->appCtx.shouldSendThreadRun && !this->appCtx.normalSendQueue.empty()) || !this->appCtx.
                highPrioritySendQueue.empty() || this->appCtx.shouldExit;
     });
 }
 
-OutgoingMessage SendThread::getNextMessage() {
+OutgoingMessage SendThread::getNextMessage() const {
     OutgoingMessage message;
     if (!this->appCtx.highPrioritySendQueue.empty()) {
         message = std::move(this->appCtx.highPrioritySendQueue.front());
@@ -48,10 +52,10 @@ OutgoingMessage SendThread::getNextMessage() {
     return message;
 }
 
-void SendThread::sendMessage(const OutgoingMessage& message) {
-    if (auto client = this->appCtx.currentClient.load(); client) {
+void SendThread::sendMessage(const OutgoingMessage& message) const {
+    if (const auto client = this->appCtx.currentClient.load(); client) {
         if (message.binary) {
-            ix::IXWebSocketSendData data(message.binaryData);
+            const ix::IXWebSocketSendData data(message.binaryData);
             client->sendBinary(data);
         } else {
             client->send(message.textData);

@@ -1,16 +1,17 @@
 #include "World.hpp"
 
-World::World(float input_max_x, float input_max_y, float input_max_z, float input_dt, float input_gravity_accel)
+World::World(const float input_max_x, const float input_max_y, const float input_max_z, const float input_dt,
+             const float input_gravity_accel)
     : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), dt(input_dt), gravity_accel(input_gravity_accel) {
 }
 
 void World::step() {
-    for (Particle &particle: particles) {
+    for (Particle& particle: particles) {
         float particle_force_x = 0;
         float particle_force_y = 0;
         float particle_force_z = 0;
 
-        for (Force &force: particle.forces) {
+        for (const Force& force: particle.forces) {
             particle_force_x = particle_force_x + force.x;
             particle_force_y = particle_force_y + force.y;
             particle_force_z = particle_force_z + force.z;
@@ -26,11 +27,11 @@ void World::step() {
     }
 }
 
-void World::positionVelocityCalculation(float &pos, float &vel, float &accel, float &max) const {
-    float L = max;
-    float period = 2 * L;
+void World::positionVelocityCalculation(float& pos, float& vel, const float& accel, const float& max) const {
+    const float L = max;
+    const float period = 2 * L;
 
-    float newPos = pos + vel * dt + 0.5f * accel * dt * dt;
+    const float newPos = pos + vel * dt + 0.5f * accel * dt * dt;
 
     float posRemainder = std::fmod(newPos, period);
     if (posRemainder < 0) posRemainder += period;
@@ -44,11 +45,11 @@ void World::positionVelocityCalculation(float &pos, float &vel, float &accel, fl
     }
 }
 
-float World::accelerationCalculation(float force, float mass) {
+float World::accelerationCalculation(const float force, const float mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
 }
 
-bool World::addParticle(const nlohmann::json &particleJson) {
+bool World::addParticle(const nlohmann::json& particleJson) {
     try {
         Particle newParticle(
             particleIdCounter.fetch_add(1),
@@ -62,12 +63,12 @@ bool World::addParticle(const nlohmann::json &particleJson) {
         );
 
         return addParticle(newParticle);
-    } catch (nlohmann::json::out_of_range &e) {
+    } catch (nlohmann::json::out_of_range& e) {
         return false;
     }
 }
 
-bool World::addParticle(Particle &particle) {
+bool World::addParticle(Particle& particle) {
     if (isValidParticle(particle)) {
         particles.push_back(std::move(particle));
         return true;
@@ -75,7 +76,7 @@ bool World::addParticle(Particle &particle) {
     return false;
 }
 
-bool World::isValidParticle(const Particle &particle) const {
+bool World::isValidParticle(const Particle& particle) const {
     // mass validations
     if (!std::isfinite(particle.mass) || particle.mass < 1e-6f || particle.mass > 1e6f) return false;
 
@@ -86,33 +87,35 @@ bool World::isValidParticle(const Particle &particle) const {
     if (particle.z < 0 || particle.z > max_z) return false;
 
     // velocity validations
-    if (!std::isfinite(particle.vel_x) || !std::isfinite(particle.vel_y) || !std::isfinite(particle.vel_z)) return
-            false;
+    if (!std::isfinite(particle.vel_x) || !std::isfinite(particle.vel_y) || !std::isfinite(particle.vel_z))
+        return
+                false;
 
-    float maxDisplacementX = 10 * max_x;
-    float maxDisplacementY = 10 * max_y;
-    float maxDisplacementZ = 10 * max_z;
+    const float maxDisplacementX = 10 * max_x;
+    const float maxDisplacementY = 10 * max_y;
+    const float maxDisplacementZ = 10 * max_z;
 
-    float displacementX = std::abs(particle.vel_x * dt);
-    float displacementY = std::abs(particle.vel_y * dt);
-    float displacementZ = std::abs(particle.vel_z * dt);
+    const float displacementX = std::abs(particle.vel_x * dt);
+    const float displacementY = std::abs(particle.vel_y * dt);
+    const float displacementZ = std::abs(particle.vel_z * dt);
 
-    if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ) return
-            false;
+    if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ)
+        return
+                false;
 
     return true;
 }
 
-void World::deleteParticleById(std::unordered_set<int> &idsToDelete) {
-    auto it = std::remove_if(particles.begin(), particles.end(),
-                             [&idsToDelete](const Particle &p) {
-                                 return idsToDelete.find(p.id) != idsToDelete.end();
-                             });
+void World::deleteParticleById(std::unordered_set<int>& idsToDelete) {
+    const auto it = std::remove_if(particles.begin(), particles.end(),
+                                   [&idsToDelete](const Particle& p) {
+                                       return idsToDelete.find(p.id) != idsToDelete.end();
+                                   });
 
     particles.erase(it, particles.end());
 }
 
-void World::fillSnapshot(World &copy) const {
+void World::fillSnapshot(World& copy) const {
     copy.max_x = max_x;
     copy.max_y = max_y;
     copy.max_z = max_z;
