@@ -1,13 +1,8 @@
 #include "SimulationThread.hpp"
 
-SimulationThread::SimulationThread(AppContext &inputAppCtx)
-    : appCtx(inputAppCtx) {
-}
-
-void SimulationThread::startThread() {
-    try {
-        workerThread = std::thread([this]() {
-        std::cout << "Starting the Particle Simulator \n\n";
+void SimulationThread::runThread() {
+    try{
+   std::cout << "Starting the Particle Simulator \n\n";
 
         using clock = std::chrono::steady_clock;
         auto next = clock::now();
@@ -83,7 +78,6 @@ void SimulationThread::startThread() {
             }
             this->appCtx.checkIfSendThreadShouldRun.notify_one();
         }
-    });
     } catch (const std::exception& e) {
         std::cerr << "Simulation thread error: " << e.what() << "\n";
         this->appCtx.signalExit();
@@ -91,11 +85,4 @@ void SimulationThread::startThread() {
         std::cerr << "Simulation thread unknown error\n";
         this->appCtx.signalExit();
     }
-
-}
-
-void SimulationThread::stopThread() {
-    if (workerThread.joinable()) {
-        workerThread.join();
     }
-}

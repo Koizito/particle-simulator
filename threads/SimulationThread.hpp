@@ -1,17 +1,8 @@
 #pragma once
-#include "app/AppContext.hpp"
-#include <iostream>
+#include "BaseThread.hpp"
 
-class SimulationThread {
-    AppContext &appCtx;
-    std::thread workerThread;
+class SimulationThread : public BaseThread {
 
 public:
-    SimulationThread(AppContext &inputAppCtx);
-    void startThread();
-    void stopThread();
-
-    ~SimulationThread() {
-        stopThread();
-    }
+    void runThread() override;
 };

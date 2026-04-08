@@ -1,13 +1,8 @@
 #include "SendThread.hpp"
 
-SendThread::SendThread(AppContext &inputAppCtx)
-    : appCtx(inputAppCtx) {
-}
-
-void SendThread::startThread() {
-    try {
-        workerThread = std::thread([this]() {
-            while (true) {
+void SendThread::runThread() {
+    try{
+   while (true) {
                 std::unique_lock<std::mutex> sendLock(this->appCtx.sendThreadMutex);
 
                 this->appCtx.checkIfSendThreadShouldRun.wait(sendLock, [this] {
@@ -38,20 +33,13 @@ void SendThread::startThread() {
                     } else {
                         client->send(message.textData);
                     }
-                }
             }
-        });
+        }
     } catch (const std::exception& e) {
         std::cerr << "Send thread error: " << e.what() << "\n";
         this->appCtx.signalExit();
     } catch (...) {
         std::cerr << "Send thread unknown error\n";
         this->appCtx.signalExit();
-    }
-}
-
-void SendThread::stopThread() {
-    if (workerThread.joinable()) {
-        workerThread.join();
     }
 }

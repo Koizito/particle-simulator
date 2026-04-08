@@ -1,17 +1,8 @@
 #pragma once
-#include "app/AppContext.hpp"
-#include <iostream>
+#include "BaseThread.hpp"
 
-class SendThread {
-    AppContext &appCtx;
-    std::thread workerThread;
+class Sendthread : public BaseThread {
 
 public:
-    SendThread(AppContext &inputAppCtx);
-    void startThread();
-    void stopThread();
-
-    ~SendThread() {
-        stopThread();
-    }
+    void runThread() override;
 };
