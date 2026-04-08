@@ -3,37 +3,22 @@
 void SendThread::runThread() {
     try{
    while (true) {
-                std::unique_lock<std::mutex> sendLock(this->appCtx.sendThreadMutex);
+            std::unique_lock<std::mutex> sendLock(this->appCtx.sendThreadMutex);
+            waitForStartSignal(sendLock);
 
-                this->appCtx.checkIfSendThreadShouldRun.wait(sendLock, [this] {
-                    return (this->appCtx.shouldSendThreadRun && !this->appCtx.normalSendQueue.empty()) || !this->appCtx.
-                           highPrioritySendQueue.empty() || this->appCtx.shouldExit;
-                });
+            if (this->appCtx.shouldExit) break;
 
-                if (this->appCtx.shouldExit) break;
+            OutgoingMessage message = getNextMessage();
 
-                OutgoingMessage message;
+            sendLock.unlock();
 
-                if (!this->appCtx.highPrioritySendQueue.empty()) {
-                    message = std::move(this->appCtx.highPrioritySendQueue.front());
-                    this->appCtx.highPrioritySendQueue.pop();
-                } else {
-                    message = std::move(this->appCtx.normalSendQueue.front());
-                    this->appCtx.normalSendQueue.pop();
-                }
-
-                this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
-
-                sendLock.unlock();
-
-                if (auto client = this->appCtx.currentClient.load(); client) {
-                    if (message.binary) {
-                        ix::IXWebSocketSendData data(message.binaryData);
-                        client->sendBinary(data);
-                    } else {
-                        client->send(message.textData);
-                    }
+            if (message.textData.empty() && message.binaryData.empty()) {
+               continue;
             }
+            
+            sendMessage(message);
+
+            this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
         }
     } catch (const std::exception& e) {
         std::cerr << "Send thread error: " << e.what() << "\n";
@@ -41,5 +26,35 @@ void SendThread::runThread() {
     } catch (...) {
         std::cerr << "Send thread unknown error\n";
         this->appCtx.signalExit();
+    }
+}
+
+void SendThread::waitForStartSignal(std::unique_lock<std::mutex>& sendLock) {
+    this->appCtx.checkIfSendThreadShouldRun.wait(sendLock, [this] {
+        return (this->appCtx.shouldSendThreadRun && !this->appCtx.normalSendQueue.empty()) || !this->appCtx.
+               highPrioritySendQueue.empty() || this->appCtx.shouldExit;
+    });
+}
+
+OutgoingMessage SendThread::getNextMessage() {
+    OutgoingMessage message;
+    if (!this->appCtx.highPrioritySendQueue.empty()) {
+        message = std::move(this->appCtx.highPrioritySendQueue.front());
+        this->appCtx.highPrioritySendQueue.pop();
+    } else if (!this->appCtx.normalSendQueue.empty()) {
+        message = std::move(this->appCtx.normalSendQueue.front());
+        this->appCtx.normalSendQueue.pop();
+    }
+    return message;
+}
+
+void SendThread::sendMessage(const OutgoingMessage& message) {
+    if (auto client = this->appCtx.currentClient.load(); client) {
+        if (message.binary) {
+            ix::IXWebSocketSendData data(message.binaryData);
+            client->sendBinary(data);
+        } else {
+            client->send(message.textData);
+        }
     }
 }

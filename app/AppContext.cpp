@@ -9,8 +9,8 @@ void AppContext::signalExit() {
     shouldSimulationThreadRun.store(true);
     shouldSendThreadRun.store(true);
 
-    checkIfSimulationThreadShouldRun.notify_all();
-    checkIfSendThreadShouldRun.notify_all();
+    checkIfSimulationThreadShouldRun.notify_one();
+    checkIfSendThreadShouldRun.notify_one();
 
     checkIfShouldExit.notify_one();
 }

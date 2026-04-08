@@ -44,14 +44,14 @@ bool NetworkingHandler::startServer() {
                     this->appCtx.shouldSimulationThreadRun.store(true);
                     this->appCtx.shouldSendThreadRun.store(true);
 
-                    this->appCtx.checkIfSimulationThreadShouldRun.notify_all();
-                    this->appCtx.checkIfSendThreadShouldRun.notify_all();
+                    this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
+                    this->appCtx.checkIfSendThreadShouldRun.notify_one();
                 } else if (type == "stop") {
                     this->appCtx.shouldSimulationThreadRun.store(false);
                     this->appCtx.shouldSendThreadRun.store(false);
 
-                    this->appCtx.checkIfSimulationThreadShouldRun.notify_all();
-                    this->appCtx.checkIfSendThreadShouldRun.notify_all();
+                    this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
+                    this->appCtx.checkIfSendThreadShouldRun.notify_one();
                 } else if (type == "exit") {
                     this->appCtx.signalExit();
                 } else if (type == "create_particles") {
@@ -129,7 +129,7 @@ bool NetworkingHandler::startServer() {
                         std::lock_guard<std::mutex> pushWorldSnapshotLock(this->appCtx.sendThreadMutex);
                         this->appCtx.highPrioritySendQueue.emplace(snapshotJson.dump());
                     }
-                    this->appCtx.checkIfSendThreadShouldRun.notify_all();
+                    this->appCtx.checkIfSendThreadShouldRun.notify_one();
                 }
             }
         }
