@@ -1,15 +1,22 @@
 #pragma once
 #include <atomic>
-#include <IXWebSocket.h>
 #include <queue>
+#include <mutex>
+#include <condition_variable>
 #include "core/OutgoingMessage.hpp"
 #include "core/World.hpp"
+
+namespace ix {
+    class WebSocket;
+}
 
 struct AppContext {
     // Single client pointer
     std::atomic<ix::WebSocket*> currentClient{nullptr};
-    // The single world object
+    // The single World object
     World mainWorld;
+    // Atomic int counter for the Particles ID assignment
+    std::atomic<int> particleIdCounter = 1;
     // Should the continuous simulation be running
     std::atomic<bool> shouldSimulationThreadRun = false;
     // Should the send thread be running
@@ -39,6 +46,10 @@ struct AppContext {
     AppContext() = default;
 
     AppContext(int inputMaxStepsPerFrame, size_t inputMaxQueueSize);
+
+    void notifyThreads();
+    
+    void setSimulationState(bool runSimulationThread, bool runSendThread);
 
     void signalExit();
 };

@@ -1,4 +1,7 @@
-#include "SimulationThread.hpp"
+#include "threads/SimulationThread.hpp"
+#include <iostream>
+#include "app/AppContext.hpp"
+#include "core/Particle.hpp"
 
 using clockAlias = std::chrono::steady_clock;
 using timePoint = clockAlias::time_point;
@@ -70,7 +73,7 @@ void SimulationThread::catchUpSimulation(timePoint& previous) const {
     }
 }
 
-std::vector<Particle> SimulationThread::getParticleSnapshot() const {
+std::vector<Particle> SimulationThread::getParticlesSnapshot() const {
     std::lock_guard<std::mutex> lock(this->appCtx.worldMutex);
     return this->appCtx.mainWorld.particles;
 }

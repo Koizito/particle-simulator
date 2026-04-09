@@ -1,6 +1,9 @@
 #pragma once
-#include "BaseThread.hpp"
-#include <iostream>
+#include <mutex>
+#include "threads/BaseThread.hpp"
+
+class AppContext;
+class OutgoingMessage;
 
 class SendThread : public BaseThread {
 public:

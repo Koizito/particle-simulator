@@ -1,4 +1,4 @@
-#include "OutgoingMessage.hpp"
+#include "core/OutgoingMessage.hpp"
 
 OutgoingMessage::OutgoingMessage(std::string data) : binary(false), textData(std::move(data)) {
 }

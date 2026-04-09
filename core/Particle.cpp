@@ -1,4 +1,4 @@
-#include "Particle.hpp"
+#include "core/Particle.hpp"
 
 Particle::Particle(const int inputId, const float inputMass, const float inputX, const float inputY,
                    const float inputZ, const float inputVelX, const float inputVelY, const float inputVelZ)

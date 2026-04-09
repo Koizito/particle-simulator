@@ -1,7 +1,7 @@
 #pragma once
-#include "Force.hpp"
-#include <nlohmann/json.hpp>
+#include "core/Force.hpp"
 #include <vector>
+#include <nlohmann/json.hpp>
 
 struct Particle {
     int id;

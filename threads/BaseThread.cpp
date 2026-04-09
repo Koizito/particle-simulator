@@ -1,4 +1,4 @@
-#include "BaseThread.hpp"
+#include "threads/BaseThread.hpp"
 
 BaseThread::BaseThread(AppContext& inputAppCtx)
     : appCtx(inputAppCtx) {

@@ -1,5 +1,7 @@
 #pragma once
-#include "app/AppContext.hpp"
+#include <thread>
+
+class AppContext;
 
 class BaseThread {
     std::thread workerThread;

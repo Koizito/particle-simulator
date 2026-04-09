@@ -1,6 +1,9 @@
 #pragma once
-#include "BaseThread.hpp"
-#include <iostream>
+#include "threads/BaseThread.hpp"
+#include "core/Particle.hpp"
+#include <vector>
+
+class AppContext;
 
 class SimulationThread : public BaseThread {
 public:
@@ -14,7 +17,7 @@ public:
 
     void catchUpSimulation(std::chrono::steady_clock::time_point& previous) const;
 
-    std::vector<Particle> getParticleSnapshot() const;
+    std::vector<Particle> getParticlesSnapshot() const;
 
     static nlohmann::json getSnapshotMetadata(const std::vector<Particle>& particlesSnapshot);
 

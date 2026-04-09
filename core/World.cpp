@@ -1,3 +1,4 @@
+#include "core/World.hpp"
 #include "World.hpp"
 
 World::World(const float inputMaxX, const float inputMaxY, const float inputMaxZ, const float inputDt,
@@ -49,10 +50,10 @@ float World::accelerationCalculation(const float& force, const float& mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
 }
 
-bool World::addParticle(const nlohmann::json& particleJson) {
+bool World::addParticle(const nlohmann::json& particleJson, AppContext& appCtx) {
     try {
         Particle newParticle(
-            particleIdCounter.fetch_add(1),
+            appCtx.particleIdCounter.fetch_add(1),
             particleJson.at("mass"),
             particleJson.at("x"),
             particleJson.at("y"),
@@ -106,7 +107,7 @@ bool World::isValidParticle(const Particle& particle) const {
     return true;
 }
 
-void World::deleteParticleById(std::unordered_set<int>& idsToDelete) {
+void World::deleteParticlesById(std::unordered_set<int>& idsToDelete) {
     const auto it = std::remove_if(particles.begin(), particles.end(),
                                    [&idsToDelete](const Particle& p) {
                                        return idsToDelete.find(p.id) != idsToDelete.end();
@@ -122,7 +123,6 @@ void World::fillSnapshot(World& copy) const {
     copy.dt = dt;
     copy.gravityAccel = gravityAccel;
     copy.particles = particles;
-    copy.particleIdCounter = particleIdCounter.load();
 }
 
 bool World::isValid() const {
@@ -135,5 +135,12 @@ bool World::isValid() const {
     // gravity acceleration validation
     if (!std::isfinite(gravityAccel) || gravityAccel > 1e6f) return false;
 
+    return true;
+}
+
+bool World::canUpdateBounds(float newMaxX, float newMaxY, float newMaxZ) const {
+    for (const auto& particle : particles) {
+        if (particle.x > newMaxX || particle.y > newMaxY || particle.z > newMaxZ) return false;
+    }
     return true;
 }

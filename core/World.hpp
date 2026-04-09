@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
-#include "Particle.hpp"
+#include "core/Particle.hpp"
+#include "app/AppContext.hpp"
 #include <unordered_set>
 #include <vector>
 #include <nlohmann/json.hpp>
@@ -13,9 +14,6 @@ struct World {
     float dt;
     float gravityAccel;
 
-    // Counter for the particles ID assignment
-    std::atomic<int> particleIdCounter = 1;
-
     std::vector<Particle> particles;
 
     explicit World(float inputMaxX = 1.0f, float inputMaxY = 1.0f, float inputMaxZ = 1.0f, float inputDt = 0.1f,
@@ -27,17 +25,18 @@ struct World {
 
     static float accelerationCalculation(const float& force, const float& mass);
 
-    bool addParticle(const nlohmann::json& particleJson);
+    bool addParticle(const nlohmann::json &particleJson, AppContext &appCtx);
 
     bool addParticle(Particle& particle);
 
     [[nodiscard]] bool isValidParticle(const Particle& particle) const;
 
-    void deleteParticleById(std::unordered_set<int>& idsToDelete);
+    void deleteParticlesById(std::unordered_set<int>& idsToDelete);
 
     void fillSnapshot(World& copy) const;
 
     [[nodiscard]] bool isValid() const;
+    bool canUpdateBounds(float newMaxX, float newMaxY, float newMaxZ) const;
 };
 
 inline void to_json(nlohmann::json& json, const World& world) {

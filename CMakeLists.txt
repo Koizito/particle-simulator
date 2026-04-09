@@ -14,10 +14,11 @@ add_executable(simulator
         core/Force.cpp
         core/OutgoingMessage.cpp
         networking/NetworkHandler.cpp
+        networking/MessageHandler.cpp
         app/AppContext.cpp
+        threads/BaseThread.cpp
         threads/SimulationThread.cpp
         threads/SendThread.cpp
-        threads/BaseThread.cpp
 )
 
 find_package(ixwebsocket REQUIRED)

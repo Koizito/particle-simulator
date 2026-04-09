@@ -4,12 +4,14 @@
 
 #include "app/AppContext.hpp"
 #include "networking/NetworkingHandler.hpp"
+#include "networking/MessageHandler.hpp"
 #include "threads/SendThread.hpp"
 #include "threads/SimulationThread.hpp"
 
 int main() {
     AppContext appCtx;
-    NetworkingHandler networkingHandler(appCtx);
+    MessageHandler messageHandler(appCtx);
+    NetworkingHandler networkingHandler(appCtx, messageHandler);
 
     if (!networkingHandler.startServer()) {
         return 1;

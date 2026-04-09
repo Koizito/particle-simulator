@@ -1,4 +1,9 @@
-#include "SendThread.hpp"
+#include "threads/SendThread.hpp"
+#include <mutex>
+#include <iostream>
+#include "app/AppContext.hpp"
+#include "core/OutgoingMessage.hpp"
+#include "IXWebSocket.h"
 
 SendThread::SendThread(AppContext& inputAppCtx)
     : BaseThread(inputAppCtx) {
