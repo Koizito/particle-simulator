@@ -13,7 +13,7 @@ public:
 
     void waitForStartSignal(std::unique_lock<std::mutex>& sendLock) const;
 
-    OutgoingMessage getNextMessage() const;
+    [[nodiscard]] OutgoingMessage getNextMessage() const;
 
     void sendMessage(const OutgoingMessage& message) const;
 };

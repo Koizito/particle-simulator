@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "NetworkingHandler.hpp"
 
 NetworkingHandler::NetworkingHandler(AppContext& inputAppCtx, MessageHandler& inputMessageHandler)

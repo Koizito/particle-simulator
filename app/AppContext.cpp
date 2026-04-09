@@ -9,7 +9,7 @@ void AppContext::notifyThreads() {
     checkIfSendThreadShouldRun.notify_one();
 }
 
-void AppContext::setSimulationState(bool runSimulationThread, bool runSendThread) {
+void AppContext::setSimulationState(const bool runSimulationThread, const bool runSendThread) {
     shouldSimulationThreadRun.store(runSimulationThread);
     shouldSendThreadRun.store(runSendThread);
     notifyThreads();

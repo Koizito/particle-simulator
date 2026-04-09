@@ -9,7 +9,7 @@ BaseThread::~BaseThread() {
 }
 
 void BaseThread::startThread() {
-    workerThread = std::thread([this]() {
+    workerThread = std::thread([this] {
         runThread();
     });
 }

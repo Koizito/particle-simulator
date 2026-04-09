@@ -1,6 +1,5 @@
 #pragma once
 #include <IXWebSocketServer.h>
-#include <iostream>
 
 #include "app/AppContext.hpp"
 #include "networking/MessageHandler.hpp"

@@ -28,7 +28,7 @@ void SimulationThread::runThread() {
             std::vector<Particle> particlesSnapshot = getParticlesSnapshot();
 
             nlohmann::json metadata = getSnapshotMetadata(particlesSnapshot);
-            std::vector<uint8_t> bufferBytes = prepareSnapshotForSending(particlesSnapshot, metadata);
+            std::vector<uint8_t> bufferBytes = prepareSnapshotForSending(particlesSnapshot);
 
             queueForSending(metadata, bufferBytes);
         }
@@ -88,8 +88,7 @@ nlohmann::json SimulationThread::getSnapshotMetadata(const std::vector<Particle>
     return metadata;
 }
 
-std::vector<uint8_t> SimulationThread::prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot,
-                                                                 nlohmann::json& metadata) {
+std::vector<uint8_t> SimulationThread::prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot) {
     const size_t count = particlesSnapshot.size();
     std::vector<uint8_t> bufferBytes;
     bufferBytes.reserve(count * sizeof(int) + count * 7 * sizeof(float));

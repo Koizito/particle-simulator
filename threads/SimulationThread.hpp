@@ -17,12 +17,11 @@ public:
 
     void catchUpSimulation(std::chrono::steady_clock::time_point& previous) const;
 
-    std::vector<Particle> getParticlesSnapshot() const;
+    [[nodiscard]] std::vector<Particle> getParticlesSnapshot() const;
 
     static nlohmann::json getSnapshotMetadata(const std::vector<Particle>& particlesSnapshot);
 
-    static std::vector<uint8_t> prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot,
-                                                          nlohmann::json& metadata);
+    static std::vector<uint8_t> prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot);
 
     void queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& bufferBytes) const;
 };

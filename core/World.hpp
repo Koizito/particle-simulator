@@ -1,10 +1,10 @@
 #pragma once
-#include <atomic>
 #include "core/Particle.hpp"
-#include "app/AppContext.hpp"
 #include <unordered_set>
 #include <vector>
 #include <nlohmann/json.hpp>
+
+struct AppContext;
 
 struct World {
     // Assume the minimum coordinates are always 0.0
@@ -21,11 +21,10 @@ struct World {
 
     void step();
 
-    void positionVelocityCalculation(float& position, float& velocity, const float& acceleration, const float& maximum) const;
+    void positionVelocityCalculation(float& position, float& velocity, const float& acceleration,
+                                     const float& maximum) const;
 
     static float accelerationCalculation(const float& force, const float& mass);
-
-    bool addParticle(const nlohmann::json &particleJson, AppContext &appCtx);
 
     bool addParticle(Particle& particle);
 
@@ -36,7 +35,8 @@ struct World {
     void fillSnapshot(World& copy) const;
 
     [[nodiscard]] bool isValid() const;
-    bool canUpdateBounds(float newMaxX, float newMaxY, float newMaxZ) const;
+
+    [[nodiscard]] bool canUpdateBounds(float newMaxX, float newMaxY, float newMaxZ) const;
 };
 
 inline void to_json(nlohmann::json& json, const World& world) {

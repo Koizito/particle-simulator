@@ -1,5 +1,4 @@
 #include "core/World.hpp"
-#include "World.hpp"
 
 World::World(const float inputMaxX, const float inputMaxY, const float inputMaxZ, const float inputDt,
              const float inputGravityAccel)
@@ -28,7 +27,8 @@ void World::step() {
     }
 }
 
-void World::positionVelocityCalculation(float& position, float& velocity, const float& acceleration, const float& maximum) const {
+void World::positionVelocityCalculation(float& position, float& velocity, const float& acceleration,
+                                        const float& maximum) const {
     const float L = maximum;
     const float period = 2 * L;
 
@@ -48,25 +48,6 @@ void World::positionVelocityCalculation(float& position, float& velocity, const 
 
 float World::accelerationCalculation(const float& force, const float& mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
-}
-
-bool World::addParticle(const nlohmann::json& particleJson, AppContext& appCtx) {
-    try {
-        Particle newParticle(
-            appCtx.particleIdCounter.fetch_add(1),
-            particleJson.at("mass"),
-            particleJson.at("x"),
-            particleJson.at("y"),
-            particleJson.at("z"),
-            particleJson.at("velX"),
-            particleJson.at("velY"),
-            particleJson.at("velZ")
-        );
-
-        return addParticle(newParticle);
-    } catch (nlohmann::json::out_of_range& e) {
-        return false;
-    }
 }
 
 bool World::addParticle(Particle& particle) {
@@ -138,8 +119,8 @@ bool World::isValid() const {
     return true;
 }
 
-bool World::canUpdateBounds(float newMaxX, float newMaxY, float newMaxZ) const {
-    for (const auto& particle : particles) {
+bool World::canUpdateBounds(const float newMaxX, const float newMaxY, const float newMaxZ) const {
+    for (const auto& particle: particles) {
         if (particle.x > newMaxX || particle.y > newMaxY || particle.z > newMaxZ) return false;
     }
     return true;

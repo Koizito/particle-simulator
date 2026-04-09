@@ -4,14 +4,14 @@
 #include <nlohmann/json.hpp>
 
 struct Particle {
-    int id;
-    float mass; // grams
-    float x; // meters
-    float y; // meters
-    float z; // meters
-    float velX; // meters/second
-    float velY; // meters/second
-    float velZ; // meters/second
+    int id{};
+    float mass{}; // grams
+    float x{}; // meters
+    float y{}; // meters
+    float z{}; // meters
+    float velX{}; // meters/second
+    float velY{}; // meters/second
+    float velZ{}; // meters/second
     std::vector<Force> forces;
 
     Particle() = default;
