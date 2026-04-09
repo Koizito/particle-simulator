@@ -9,40 +9,40 @@ struct Particle {
     float x; // meters
     float y; // meters
     float z; // meters
-    float vel_x; // meters/second
-    float vel_y; // meters/second
-    float vel_z; // meters/second
+    float velX; // meters/second
+    float velY; // meters/second
+    float velZ; // meters/second
     std::vector<Force> forces;
 
     Particle() = default;
 
-    explicit Particle(int input_id, float input_mass = 1.0f, float input_x = 0.0f, float input_y = 0.0f,
-                      float input_z = 0.0f, float input_vel_x = 0.0f, float input_vel_y = 0.0f,
-                      float input_vel_z = 0.0f);
+    explicit Particle(int inputId, float inputMass = 1.0f, float inputX = 0.0f, float inputY = 0.0f,
+                      float inputZ = 0.0f, float inputVelX = 0.0f, float inputVelY = 0.0f,
+                      float inputVelZ = 0.0f);
 };
 
-inline void to_json(nlohmann::json& j, const Particle& p) {
-    j = nlohmann::json{
-        {"id", p.id},
-        {"mass", p.mass},
-        {"x", p.x},
-        {"y", p.y},
-        {"z", p.z},
-        {"vel_x", p.vel_x},
-        {"vel_y", p.vel_y},
-        {"vel_z", p.vel_z},
-        {"forces", p.forces}
+inline void to_json(nlohmann::json& json, const Particle& particle) {
+    json = nlohmann::json{
+        {"id", particle.id},
+        {"mass", particle.mass},
+        {"x", particle.x},
+        {"y", particle.y},
+        {"z", particle.z},
+        {"velX", particle.velX},
+        {"velY", particle.velY},
+        {"velZ", particle.velZ},
+        {"forces", particle.forces}
     };
 }
 
-inline void from_json(const nlohmann::json& j, Particle& p) {
-    j.at("id").get_to(p.id);
-    j.at("mass").get_to(p.mass);
-    j.at("x").get_to(p.x);
-    j.at("y").get_to(p.y);
-    j.at("z").get_to(p.z);
-    j.at("vel_x").get_to(p.vel_x);
-    j.at("vel_y").get_to(p.vel_y);
-    j.at("vel_z").get_to(p.vel_z);
-    j.at("forces").get_to(p.forces);
+inline void from_json(const nlohmann::json& json, Particle& particle) {
+    json.at("id").get_to(particle.id);
+    json.at("mass").get_to(particle.mass);
+    json.at("x").get_to(particle.x);
+    json.at("y").get_to(particle.y);
+    json.at("z").get_to(particle.z);
+    json.at("velX").get_to(particle.velX);
+    json.at("velY").get_to(particle.velY);
+    json.at("velZ").get_to(particle.velZ);
+    json.at("forces").get_to(particle.forces);
 }

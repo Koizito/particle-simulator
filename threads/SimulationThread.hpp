@@ -16,10 +16,10 @@ public:
 
     std::vector<Particle> getParticleSnapshot() const;
 
-    static nlohmann::json getSnapshotMetadata(const std::vector<Particle>& particles_snapshot);
+    static nlohmann::json getSnapshotMetadata(const std::vector<Particle>& particlesSnapshot);
 
-    static std::vector<uint8_t> prepareSnapshotForSending(const std::vector<Particle>& particles_snapshot,
+    static std::vector<uint8_t> prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot,
                                                           nlohmann::json& metadata);
 
-    void queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& buffer_bytes) const;
+    void queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& bufferBytes) const;
 };

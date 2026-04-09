@@ -1,7 +1,7 @@
 #include "SimulationThread.hpp"
 
-using clock_alias = std::chrono::steady_clock;
-using time_point = clock_alias::time_point;
+using clockAlias = std::chrono::steady_clock;
+using timePoint = clockAlias::time_point;
 
 SimulationThread::SimulationThread(AppContext& inputAppCtx)
     : BaseThread(inputAppCtx) {
@@ -11,7 +11,7 @@ void SimulationThread::runThread() {
     try {
         std::cout << "Starting the Particle Simulator \n\n";
 
-        time_point previous = clock_alias::now();
+        timePoint previous = clockAlias::now();
 
         while (!this->appCtx.shouldExit.load()) {
             waitForStartSignal();
@@ -22,12 +22,12 @@ void SimulationThread::runThread() {
 
             catchUpSimulation(previous);
 
-            std::vector<Particle> particles_snapshot = getParticleSnapshot();
+            std::vector<Particle> particlesSnapshot = getParticlesSnapshot();
 
-            nlohmann::json metadata = getSnapshotMetadata(particles_snapshot);
-            std::vector<uint8_t> buffer_bytes = prepareSnapshotForSending(particles_snapshot, metadata);
+            nlohmann::json metadata = getSnapshotMetadata(particlesSnapshot);
+            std::vector<uint8_t> bufferBytes = prepareSnapshotForSending(particlesSnapshot, metadata);
 
-            queueForSending(metadata, buffer_bytes);
+            queueForSending(metadata, bufferBytes);
         }
     } catch (const std::exception& e) {
         std::cerr << "Simulation thread error: " << e.what() << "\n";
@@ -52,21 +52,21 @@ void SimulationThread::checkIfQueueIsFull() const {
     });
 }
 
-void SimulationThread::catchUpSimulation(time_point& previous) const {
+void SimulationThread::catchUpSimulation(timePoint& previous) const {
     int steps = 0;
-    const time_point now = clock_alias::now();
+    const timePoint now = clockAlias::now();
 
     while (now >= previous && steps < this->appCtx.MAX_STEPS_PER_FRAME) {
         std::lock_guard<std::mutex> stepLock(this->appCtx.worldMutex);
         this->appCtx.mainWorld.step();
 
-        previous += std::chrono::duration_cast<clock_alias::duration>(
+        previous += std::chrono::duration_cast<clockAlias::duration>(
             std::chrono::duration<double>(this->appCtx.mainWorld.dt));
         steps++;
     }
 
     if (steps >= this->appCtx.MAX_STEPS_PER_FRAME) {
-        previous = clock_alias::now();
+        previous = clockAlias::now();
     }
 }
 
@@ -75,8 +75,8 @@ std::vector<Particle> SimulationThread::getParticleSnapshot() const {
     return this->appCtx.mainWorld.particles;
 }
 
-nlohmann::json SimulationThread::getSnapshotMetadata(const std::vector<Particle>& particles_snapshot) {
-    size_t count = particles_snapshot.size();
+nlohmann::json SimulationThread::getSnapshotMetadata(const std::vector<Particle>& particlesSnapshot) {
+    size_t count = particlesSnapshot.size();
 
     nlohmann::json metadata;
     metadata["type"] = "particles";
@@ -85,29 +85,29 @@ nlohmann::json SimulationThread::getSnapshotMetadata(const std::vector<Particle>
     return metadata;
 }
 
-std::vector<uint8_t> SimulationThread::prepareSnapshotForSending(const std::vector<Particle>& particles_snapshot,
+std::vector<uint8_t> SimulationThread::prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot,
                                                                  nlohmann::json& metadata) {
-    const size_t count = particles_snapshot.size();
-    std::vector<uint8_t> buffer_bytes;
-    buffer_bytes.reserve(count * sizeof(int) + count * 7 * sizeof(float));
+    const size_t count = particlesSnapshot.size();
+    std::vector<uint8_t> bufferBytes;
+    bufferBytes.reserve(count * sizeof(int) + count * 7 * sizeof(float));
 
-    for (const auto& p: particles_snapshot) {
+    for (const auto& p: particlesSnapshot) {
         // ID
-        const auto id_ptr = reinterpret_cast<const uint8_t*>(&p.id);
-        buffer_bytes.insert(buffer_bytes.end(), id_ptr, id_ptr + sizeof(int));
+        const auto idPtr = reinterpret_cast<const uint8_t*>(&p.id);
+        bufferBytes.insert(bufferBytes.end(), idPtr, idPtr + sizeof(int));
 
         // mass, position, velocity
-        const float arr[] = {p.mass, p.x, p.y, p.z, p.vel_x, p.vel_y, p.vel_z};
-        const auto arr_ptr = reinterpret_cast<const uint8_t*>(arr);
-        buffer_bytes.insert(buffer_bytes.end(), arr_ptr, arr_ptr + sizeof(arr));
+        const float arr[] = {p.mass, p.x, p.y, p.z, p.velX, p.velY, p.velZ};
+        const auto arrPtr = reinterpret_cast<const uint8_t*>(arr);
+        bufferBytes.insert(bufferBytes.end(), arrPtr, arrPtr + sizeof(arr));
     }
-    return buffer_bytes;
+    return bufferBytes;
 }
 
-void SimulationThread::queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& buffer_bytes) const {
+void SimulationThread::queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& bufferBytes) const {
     std::lock_guard<std::mutex> lock(this->appCtx.sendThreadMutex);
     this->appCtx.normalSendQueue.emplace(metadata.dump());
-    this->appCtx.normalSendQueue.emplace(std::move(buffer_bytes));
+    this->appCtx.normalSendQueue.emplace(std::move(bufferBytes));
 
     this->appCtx.checkIfSendThreadShouldRun.notify_one();
 }

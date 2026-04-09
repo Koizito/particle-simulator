@@ -7,25 +7,25 @@
 
 struct World {
     // Assume the minimum coordinates are always 0.0
-    float max_x;
-    float max_y;
-    float max_z;
+    float maxX;
+    float maxY;
+    float maxZ;
     float dt;
-    float gravity_accel;
+    float gravityAccel;
 
     // Counter for the particles ID assignment
     std::atomic<int> particleIdCounter = 1;
 
     std::vector<Particle> particles;
 
-    explicit World(float input_max_x = 1.0f, float input_max_y = 1.0f, float input_max_z = 1.0f, float input_dt = 0.1f,
-                   float input_gravity_accel = 9.81f);
+    explicit World(float inputMaxX = 1.0f, float inputMaxY = 1.0f, float inputMaxZ = 1.0f, float inputDt = 0.1f,
+                   float inputGravityAccel = 9.81f);
 
     void step();
 
-    void positionVelocityCalculation(float& pos, float& vel, const float& accel, const float& max) const;
+    void positionVelocityCalculation(float& position, float& velocity, const float& acceleration, const float& maximum) const;
 
-    static float accelerationCalculation(float force, float mass);
+    static float accelerationCalculation(const float& force, const float& mass);
 
     bool addParticle(const nlohmann::json& particleJson);
 
@@ -40,22 +40,22 @@ struct World {
     [[nodiscard]] bool isValid() const;
 };
 
-inline void to_json(nlohmann::json& j, const World& w) {
-    j = nlohmann::json{
-        {"max_x", w.max_x},
-        {"max_y", w.max_y},
-        {"max_z", w.max_z},
-        {"dt", w.dt},
-        {"gravity_accel", w.gravity_accel},
-        {"particles", w.particles},
+inline void to_json(nlohmann::json& json, const World& world) {
+    json = nlohmann::json{
+        {"maxX", world.maxX},
+        {"maxY", world.maxY},
+        {"maxZ", world.maxZ},
+        {"dt", world.dt},
+        {"gravityAccel", world.gravityAccel},
+        {"particles", world.particles},
     };
 }
 
-inline void from_json(const nlohmann::json& j, World& w) {
-    j.at("max_x").get_to(w.max_x);
-    j.at("max_y").get_to(w.max_y);
-    j.at("max_z").get_to(w.max_z);
-    j.at("dt").get_to(w.dt);
-    j.at("gravity_accel").get_to(w.gravity_accel);
-    j.at("particles").get_to(w.particles);
+inline void from_json(const nlohmann::json& json, World& world) {
+    json.at("maxX").get_to(world.maxX);
+    json.at("maxY").get_to(world.maxY);
+    json.at("maxZ").get_to(world.maxZ);
+    json.at("dt").get_to(world.dt);
+    json.at("gravityAccel").get_to(world.gravityAccel);
+    json.at("particles").get_to(world.particles);
 }

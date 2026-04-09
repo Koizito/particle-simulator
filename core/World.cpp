@@ -1,51 +1,51 @@
 #include "World.hpp"
 
-World::World(const float input_max_x, const float input_max_y, const float input_max_z, const float input_dt,
-             const float input_gravity_accel)
-    : max_x(input_max_x), max_y(input_max_y), max_z(input_max_z), dt(input_dt), gravity_accel(input_gravity_accel) {
+World::World(const float inputMaxX, const float inputMaxY, const float inputMaxZ, const float inputDt,
+             const float inputGravityAccel)
+    : maxX(inputMaxX), maxY(inputMaxY), maxZ(inputMaxZ), dt(inputDt), gravityAccel(inputGravityAccel) {
 }
 
 void World::step() {
     for (Particle& particle: particles) {
-        float particle_force_x = 0;
-        float particle_force_y = 0;
-        float particle_force_z = 0;
+        float particleForceX = 0;
+        float particleForceY = 0;
+        float particleForceZ = 0;
 
         for (const Force& force: particle.forces) {
-            particle_force_x = particle_force_x + force.x;
-            particle_force_y = particle_force_y + force.y;
-            particle_force_z = particle_force_z + force.z;
+            particleForceX = particleForceX + force.x;
+            particleForceY = particleForceY + force.y;
+            particleForceZ = particleForceZ + force.z;
         }
 
-        float accel_x = accelerationCalculation(particle_force_x, particle.mass);
-        float accel_y = accelerationCalculation(particle_force_y, particle.mass);
-        float accel_z = accelerationCalculation(particle_force_z, particle.mass) + gravity_accel;
+        float accelX = accelerationCalculation(particleForceX, particle.mass);
+        float accelY = accelerationCalculation(particleForceY, particle.mass);
+        float accelZ = accelerationCalculation(particleForceZ, particle.mass) + gravityAccel;
 
-        positionVelocityCalculation(particle.x, particle.vel_x, accel_x, max_x);
-        positionVelocityCalculation(particle.y, particle.vel_y, accel_y, max_y);
-        positionVelocityCalculation(particle.z, particle.vel_z, accel_z, max_z);
+        positionVelocityCalculation(particle.x, particle.velX, accelX, maxX);
+        positionVelocityCalculation(particle.y, particle.velY, accelY, maxY);
+        positionVelocityCalculation(particle.z, particle.velZ, accelZ, maxZ);
     }
 }
 
-void World::positionVelocityCalculation(float& pos, float& vel, const float& accel, const float& max) const {
-    const float L = max;
+void World::positionVelocityCalculation(float& position, float& velocity, const float& acceleration, const float& maximum) const {
+    const float L = maximum;
     const float period = 2 * L;
 
-    const float newPos = pos + vel * dt + 0.5f * accel * dt * dt;
+    const float newPos = position + velocity * dt + 0.5f * acceleration * dt * dt;
 
-    float posRemainder = std::fmod(newPos, period);
-    if (posRemainder < 0) posRemainder += period;
+    float positionRemainder = std::fmod(newPos, period);
+    if (positionRemainder < 0) positionRemainder += period;
 
-    if (posRemainder > L) {
-        pos = period - posRemainder;
-        vel = -(vel + accel * dt);
+    if (positionRemainder > L) {
+        position = period - positionRemainder;
+        velocity = -(velocity + acceleration * dt);
     } else {
-        pos = posRemainder;
-        vel = vel + accel * dt;
+        position = positionRemainder;
+        velocity = velocity + acceleration * dt;
     }
 }
 
-float World::accelerationCalculation(const float force, const float mass) {
+float World::accelerationCalculation(const float& force, const float& mass) {
     return force / (mass / 1000); // 1000 because mass is in grams.
 }
 
@@ -57,9 +57,9 @@ bool World::addParticle(const nlohmann::json& particleJson) {
             particleJson.at("x"),
             particleJson.at("y"),
             particleJson.at("z"),
-            particleJson.at("vel_x"),
-            particleJson.at("vel_y"),
-            particleJson.at("vel_z")
+            particleJson.at("velX"),
+            particleJson.at("velY"),
+            particleJson.at("velZ")
         );
 
         return addParticle(newParticle);
@@ -82,22 +82,22 @@ bool World::isValidParticle(const Particle& particle) const {
 
     // coordinates validations
     if (!std::isfinite(particle.x) || !std::isfinite(particle.y) || !std::isfinite(particle.z)) return false;
-    if (particle.x < 0 || particle.x > max_x) return false;
-    if (particle.y < 0 || particle.y > max_y) return false;
-    if (particle.z < 0 || particle.z > max_z) return false;
+    if (particle.x < 0 || particle.x > maxX) return false;
+    if (particle.y < 0 || particle.y > maxY) return false;
+    if (particle.z < 0 || particle.z > maxZ) return false;
 
     // velocity validations
-    if (!std::isfinite(particle.vel_x) || !std::isfinite(particle.vel_y) || !std::isfinite(particle.vel_z))
+    if (!std::isfinite(particle.velX) || !std::isfinite(particle.velY) || !std::isfinite(particle.velZ))
         return
                 false;
 
-    const float maxDisplacementX = 10 * max_x;
-    const float maxDisplacementY = 10 * max_y;
-    const float maxDisplacementZ = 10 * max_z;
+    const float maxDisplacementX = 10 * maxX;
+    const float maxDisplacementY = 10 * maxY;
+    const float maxDisplacementZ = 10 * maxZ;
 
-    const float displacementX = std::abs(particle.vel_x * dt);
-    const float displacementY = std::abs(particle.vel_y * dt);
-    const float displacementZ = std::abs(particle.vel_z * dt);
+    const float displacementX = std::abs(particle.velX * dt);
+    const float displacementY = std::abs(particle.velY * dt);
+    const float displacementZ = std::abs(particle.velZ * dt);
 
     if (displacementX > maxDisplacementX || displacementY > maxDisplacementY || displacementZ > maxDisplacementZ)
         return
@@ -116,24 +116,24 @@ void World::deleteParticleById(std::unordered_set<int>& idsToDelete) {
 }
 
 void World::fillSnapshot(World& copy) const {
-    copy.max_x = max_x;
-    copy.max_y = max_y;
-    copy.max_z = max_z;
+    copy.maxX = maxX;
+    copy.maxY = maxY;
+    copy.maxZ = maxZ;
     copy.dt = dt;
-    copy.gravity_accel = gravity_accel;
+    copy.gravityAccel = gravityAccel;
     copy.particles = particles;
     copy.particleIdCounter = particleIdCounter.load();
 }
 
 bool World::isValid() const {
     // dimension validations
-    if (!std::isfinite(max_x) || !std::isfinite(max_y) || !std::isfinite(max_z)) return false;
-    if (max_x < 1.0f || max_y < 1.0f || max_z < 1.0f) return false;
-    if (max_x > 1e6f || max_y > 1e6f || max_z > 1e6f) return false;
+    if (!std::isfinite(maxX) || !std::isfinite(maxY) || !std::isfinite(maxZ)) return false;
+    if (maxX < 1.0f || maxY < 1.0f || maxZ < 1.0f) return false;
+    if (maxX > 1e6f || maxY > 1e6f || maxZ > 1e6f) return false;
     // timestep validation
     if (dt <= 0.0f || dt > 0.1f) return false;
     // gravity acceleration validation
-    if (!std::isfinite(gravity_accel) || gravity_accel > 1e6f) return false;
+    if (!std::isfinite(gravityAccel) || gravityAccel > 1e6f) return false;
 
     return true;
 }
