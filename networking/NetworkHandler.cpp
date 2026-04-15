@@ -1,9 +1,13 @@
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 #include "NetworkingHandler.hpp"
+#include "MessageHandler.hpp"
+#include "app/AppContext.hpp"
 
 NetworkingHandler::NetworkingHandler(AppContext& inputAppCtx, MessageHandler& inputMessageHandler)
     : appCtx(inputAppCtx), messageHandler(inputMessageHandler), server(8080, "0.0.0.0") {
+        logger = spdlog::get("networkingHandler");
 }
 
 bool NetworkingHandler::startServer() {
@@ -15,16 +19,17 @@ bool NetworkingHandler::startServer() {
             if (msg->type == ix::WebSocketMessageType::Open) {
                 ix::WebSocket* expected = nullptr;
                 if (!this->appCtx.currentClient.compare_exchange_strong(expected, &webSocket)) {
+                    this->logger->warn("A client is already connected to the server.");
                     webSocket.send("Server busy");
                     webSocket.close();
                     return;
                 }
-                std::cout << "Client connected\n";
+                this->logger->info("Client connected.");
             } else if (msg->type == ix::WebSocketMessageType::Close) {
                 ix::WebSocket* expected = &webSocket;
                 this->appCtx.currentClient.compare_exchange_strong(expected, nullptr);
 
-                std::cout << "Client disconnected\n";
+                this->logger->info("Client disconnected.");
             } else if (msg->type == ix::WebSocketMessageType::Message) {
                 messageHandler.handleMessage(msg->str);
             }
@@ -33,16 +38,18 @@ bool NetworkingHandler::startServer() {
 
     auto result = server.listen();
     if (!result.first) {
-        std::cerr << "Listen error: " << result.second << "\n";
+        logger->error("Failed to listen on the server. Listen error: {}", result.second);
         return false;
     }
 
     server.start();
-    std::cout << "Continuous simulation server running on port 8080\n";
+
+    logger->info("Server listening on port {}.", server.getPort());
     return true;
 }
 
 void NetworkingHandler::stopServer() {
+    logger->info("Stopping server.");
     server.stop();
     ix::uninitNetSystem();
 }

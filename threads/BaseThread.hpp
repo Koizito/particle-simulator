@@ -1,7 +1,7 @@
 #pragma once
 #include <thread>
 
-class AppContext;
+struct AppContext;
 
 class BaseThread {
     std::thread workerThread;

@@ -3,7 +3,7 @@
 #include "core/Particle.hpp"
 #include <vector>
 
-class AppContext;
+struct AppContext;
 
 class SimulationThread : public BaseThread {
 public:

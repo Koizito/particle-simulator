@@ -24,6 +24,7 @@ add_executable(simulator
 find_package(ixwebsocket REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(spdlog REQUIRED)
 
 target_include_directories(simulator PRIVATE
         ${CMAKE_SOURCE_DIR}

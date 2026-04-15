@@ -3,7 +3,7 @@
 #include "threads/BaseThread.hpp"
 
 class AppContext;
-class OutgoingMessage;
+struct OutgoingMessage;
 
 class SendThread : public BaseThread {
 public:
