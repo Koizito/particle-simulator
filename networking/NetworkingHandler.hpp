@@ -1,6 +1,6 @@
 #pragma once
 #include <IXWebSocketServer.h>
-#include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
 
 class MessageHandler;
 struct AppContext;

@@ -7,55 +7,68 @@
 
 MessageHandler::MessageHandler(AppContext& inputAppCtx)
     : appCtx(inputAppCtx) {
+        logger = spdlog::get("messageHandler");
 }
 
 void MessageHandler::handleMessage(const std::string& message) {
+    logger->info("Processing message.");
     nlohmann::json jsonMessage = parseMessage(message);
 
     const std::string type = jsonMessage.value("type", "");
 
     if (type.empty()) {
-        std::cout << "Missing 'type'\n";
+        logger->error("Missing 'type' field");
         return;
     }
 
     if (type == "start") {
+        logger->info("Starting server...");
         appCtx.setSimulationState(true, true);
     } else if (type == "stop") {
+        logger->info("Stopping server...");
         appCtx.setSimulationState(false, false);
     } else if (type == "exit") {
+        logger->info("Exiting server...");
         appCtx.signalExit();
     } else if (type == "create_particles") {
         if (!jsonMessage.contains("particles") || !jsonMessage["particles"].is_array()) {
-            std::cout << "Missing particles array\n";
+            logger->error("Missing array of particles");
             return;
         }
-
+        logger->info("Creating {} new particles", jsonMessage["particles"].size());
+        logger->debug("Complete particles array: {}", jsonMessage["particles"].dump());
         addParticlesToWorld(jsonMessage["particles"]);
     } else if (type == "delete_particles") {
         if (!jsonMessage.contains("particle_ids") || !jsonMessage["particle_ids"].is_array()) {
-            std::cout << "Missing particle IDs array\n";
+            logger->error("Missing array of particle IDs");
             return;
         }
+
+        logger->info("Deleting {} particles", jsonMessage["particle_ids"].size());
+        logger->debug("Complete particle IDs array: {}", jsonMessage["particle_ids"].dump());
 
         std::unordered_set<int> idsToDelete = getParticleIdsFromJson(jsonMessage["particle_ids"]);
 
         std::lock_guard<std::mutex> deleteParticleLock(appCtx.worldMutex);
         appCtx.mainWorld.deleteParticlesById(idsToDelete);
     } else if (type == "update_world") {
-        const World newWorld = parseWorldFromJson(jsonMessage);
+        logger->info("Updating world...");
+        logger->debug("Input world payload: {}", jsonMessage["world"].dump());
+        const World newWorld = parseWorldFromJson(jsonMessage["world"]);
 
         updateWorld(newWorld);
     } else if (type == "reset_world") {
+        logger->info("Resetting world...");
         World newWorld;
         std::lock_guard<std::mutex> resetWorldLock(appCtx.worldMutex);
         appCtx.mainWorld = std::move(newWorld);
     } else if (type == "get_world_snapshot") {
+        logger->info("Getting world snapshot...");
         const World snapshotWorld = getWorldSnapshot();
 
         pushWorldSnapshotToQueue(snapshotWorld);
     } else {
-        std::cout << "Unknown message type: " << type << "\n";
+        logger->error("Unknown type: {}", type);
     }
 }
 
@@ -65,7 +78,7 @@ nlohmann::json MessageHandler::parseMessage(const std::string& message) {
     try {
         jsonMessage = nlohmann::json::parse(message);
     } catch (...) {
-        std::cout << "Problem parsing the JSON!\n";
+        logger->error("Failed to parse message: {}", message);
         return {};
     }
 
@@ -75,7 +88,8 @@ nlohmann::json MessageHandler::parseMessage(const std::string& message) {
 void MessageHandler::addParticlesToWorld(const nlohmann::json& particlesJson) {
     for (const auto& particleJson: particlesJson) {
         if (particleJsonHasMissingFields(particleJson) || particleJsonHasNonNumberFields(particleJson)) {
-            std::cout << "Invalid particle detected\n";
+            logger->warn("Invalid particle detected in input");
+            logger->debug("Invalid particle payload: {}", particleJson.dump());
             continue;
         }
 
@@ -92,7 +106,7 @@ void MessageHandler::addParticlesToWorld(const nlohmann::json& particlesJson) {
             );
             std::lock_guard<std::mutex> createParticleLock(appCtx.worldMutex);
             if (!appCtx.mainWorld.addParticle(newParticle)) {
-                std::cout << "Invalid particle detected\n";
+                logger->warn("Failed to add particle to world");
             }
         }
     }
@@ -122,7 +136,7 @@ std::unordered_set<int> MessageHandler::getParticleIdsFromJson(const nlohmann::j
     std::unordered_set<int> idsToDelete;
     for (const auto& idJson: particleIdsJson) {
         if (!idJson.is_number_integer()) {
-            std::cout << "Invalid particle ID\n";
+            logger->warn("Invalid particle ID detected in input: {}", idJson.dump());
             continue;
         }
         idsToDelete.insert(idJson.get<int>());
@@ -148,7 +162,7 @@ void MessageHandler::updateWorld(World newWorld) {
     std::lock_guard<std::mutex> worldLock(appCtx.worldMutex);
 
     if (!newWorld.isValid() && appCtx.mainWorld.canUpdateBounds(newWorld.maxX, newWorld.maxY, newWorld.maxZ)) {
-        std::cout << "Invalid world update\n";
+        logger->error("Invalid world detected");
         return;
     }
 
@@ -166,6 +180,9 @@ World MessageHandler::getWorldSnapshot() {
 void MessageHandler::pushWorldSnapshotToQueue(const World& snapshotWorld) const {
     nlohmann::json snapshotJson;
     snapshotJson["snapshot"] = snapshotWorld;
+
+    logger->debug("World snapshot to be pushed to queue: {}", snapshotJson.dump());
+
     {
         std::lock_guard<std::mutex> pushWorldSnapshotLock(appCtx.sendThreadMutex);
         appCtx.highPrioritySendQueue.emplace(snapshotJson.dump());

@@ -13,6 +13,8 @@
 int main() {
     const auto mainLogger = spdlog::stdout_color_mt("main");
     spdlog::stdout_color_mt("networkingHandler");
+    spdlog::stdout_color_mt("messageHandler");
+
     AppContext appCtx;
     MessageHandler messageHandler(appCtx);
     NetworkingHandler networkingHandler(appCtx, messageHandler);

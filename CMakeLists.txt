@@ -13,7 +13,7 @@ add_executable(simulator
         core/Particle.cpp
         core/Force.cpp
         core/OutgoingMessage.cpp
-        networking/NetworkHandler.cpp
+        networking/NetworkingHandler.cpp
         networking/MessageHandler.cpp
         app/AppContext.cpp
         threads/BaseThread.cpp
@@ -34,4 +34,5 @@ target_link_libraries(simulator PRIVATE
         ixwebsocket::ixwebsocket
         Threads::Threads
         nlohmann_json::nlohmann_json
+        spdlog::spdlog
 )
