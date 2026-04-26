@@ -3,17 +3,19 @@
 #include "core/Particle.hpp"
 #include <vector>
 
-class AppContext;
+struct AppContext;
 
 class SimulationThread : public BaseThread {
+    // Max steps each frame of the simulation can attempt to make before synchronization is forced
+    int MAX_STEPS_PER_FRAME;
+
 public:
-    explicit SimulationThread(AppContext& inputAppCtx);
+    SimulationThread(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx,
+                     int inputMaxStepsPerFrame = 10);
 
     void runThread() override;
 
-    void waitForStartSignal() const;
-
-    void checkIfQueueIsFull() const;
+    void waitForRunSignal() const;
 
     void catchUpSimulation(std::chrono::steady_clock::time_point& previous) const;
 
@@ -23,5 +25,5 @@ public:
 
     static std::vector<uint8_t> prepareSnapshotForSending(const std::vector<Particle>& particlesSnapshot);
 
-    void queueForSending(const nlohmann::json& metadata, std::vector<uint8_t>& bufferBytes) const;
+    void queueForSending(const nlohmann::json& metadata, const std::vector<uint8_t>& bufferBytes) const;
 };

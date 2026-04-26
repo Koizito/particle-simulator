@@ -4,8 +4,6 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-struct AppContext;
-
 struct World {
     // Assume the minimum coordinates are always 0.0
     float maxX;

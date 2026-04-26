@@ -1,16 +1,19 @@
 #pragma once
 #include <IXWebSocketServer.h>
+#include <spdlog/spdlog.h>
 
-#include "app/AppContext.hpp"
-#include "networking/MessageHandler.hpp"
+class MessageHandler;
+struct AppContext;
 
 class NetworkingHandler {
+    std::shared_ptr<spdlog::logger> logger;
     AppContext& appCtx;
     MessageHandler& messageHandler;
     ix::WebSocketServer server;
 
 public:
-    explicit NetworkingHandler(AppContext& inputAppCtx, MessageHandler& inputMessageHandler);
+    NetworkingHandler(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx,
+                      MessageHandler& inputMessageHandler);
 
     [[nodiscard]] bool startServer();
 
