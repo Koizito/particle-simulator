@@ -2,16 +2,16 @@
 #include <mutex>
 #include "threads/BaseThread.hpp"
 
-class AppContext;
+struct AppContext;
 struct OutgoingMessage;
 
 class SendThread : public BaseThread {
 public:
-    explicit SendThread(AppContext& inputAppCtx);
+    SendThread(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx);
 
     void runThread() override;
 
-    void waitForStartSignal(std::unique_lock<std::mutex>& sendLock) const;
+    void waitForRunSignal() const;
 
     [[nodiscard]] OutgoingMessage getNextMessage() const;
 

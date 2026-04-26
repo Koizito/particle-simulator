@@ -1,13 +1,13 @@
-#include <iostream>
 #include <spdlog/spdlog.h>
 
 #include "NetworkingHandler.hpp"
 #include "MessageHandler.hpp"
 #include "app/AppContext.hpp"
 
-NetworkingHandler::NetworkingHandler(AppContext& inputAppCtx, MessageHandler& inputMessageHandler)
-    : appCtx(inputAppCtx), messageHandler(inputMessageHandler), server(8080, "0.0.0.0") {
-        logger = spdlog::get("networkingHandler");
+NetworkingHandler::NetworkingHandler(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx,
+                                     MessageHandler& inputMessageHandler)
+    : logger(std::move(inputLogger)), appCtx(inputAppCtx), messageHandler(inputMessageHandler),
+      server(8080, "0.0.0.0") {
 }
 
 bool NetworkingHandler::startServer() {

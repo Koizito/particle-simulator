@@ -12,7 +12,8 @@ class NetworkingHandler {
     ix::WebSocketServer server;
 
 public:
-    explicit NetworkingHandler(AppContext& inputAppCtx, MessageHandler& inputMessageHandler);
+    NetworkingHandler(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx,
+                      MessageHandler& inputMessageHandler);
 
     [[nodiscard]] bool startServer();
 

@@ -1,7 +1,9 @@
 #include "core/OutgoingMessage.hpp"
 
-OutgoingMessage::OutgoingMessage(std::string data) : textData(std::move(data)) {
+OutgoingMessage::OutgoingMessage(std::string inputTextData)
+    : textData(std::move(inputTextData)) {
 }
 
-OutgoingMessage::OutgoingMessage(std::vector<uint8_t> data) : binary(true), binaryData(std::move(data)) {
+OutgoingMessage::OutgoingMessage(std::string inputTextData, std::vector<uint8_t> inputBinaryData)
+    : textData(std::move(inputTextData)), binaryData(std::move(inputBinaryData)) {
 }

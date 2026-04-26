@@ -1,23 +1,35 @@
 #include "AppContext.hpp"
 
-AppContext::AppContext(const int inputMaxStepsPerFrame, const size_t inputMaxQueueSize)
-    : MAX_STEPS_PER_FRAME(inputMaxStepsPerFrame), MAX_QUEUE_SIZE(inputMaxQueueSize) {
-}
+#include <spdlog/spdlog.h>
 
-void AppContext::notifyThreads() {
-    checkIfSimulationThreadShouldRun.notify_one();
-    checkIfSendThreadShouldRun.notify_one();
+#include <utility>
+
+AppContext::AppContext(std::shared_ptr<spdlog::logger> inputAppCtxLogger,
+                       std::shared_ptr<spdlog::logger> inputMessageQueueLogger)
+    : logger(std::move(inputAppCtxLogger)), messagingQueue(std::move(inputMessageQueueLogger)) {
 }
 
 void AppContext::setSimulationState(const bool runSimulationThread, const bool runSendThread) {
+    logger->debug("Should Simulation Thread run: {}", runSimulationThread);
+    logger->debug("Should Send Thread run: {}", runSendThread);
+
     shouldSimulationThreadRun.store(runSimulationThread);
     shouldSendThreadRun.store(runSendThread);
-    notifyThreads();
+
+    {
+        std::lock_guard<std::mutex> stateLock(messagingQueue.queuesMutex);
+    }
+    messagingQueue.spaceAvailableCV.notify_all();
+
+    {
+        std::lock_guard<std::mutex> stateLock(messagingQueue.queuesMutex);
+    }
+    messagingQueue.dataAvailableCV.notify_all();
 }
 
 void AppContext::signalExit() {
+    logger->info("Signaling Exit");
     shouldExit.store(true);
     setSimulationState(true, true);
-    notifyThreads();
-    checkIfShouldExit.notify_one();
+    checkIfShouldExit.notify_all();
 }

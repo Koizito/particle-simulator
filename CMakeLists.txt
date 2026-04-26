@@ -19,6 +19,7 @@ add_executable(simulator
         threads/BaseThread.cpp
         threads/SimulationThread.cpp
         threads/SendThread.cpp
+        app/MessagingQueue.cpp
 )
 
 find_package(ixwebsocket REQUIRED)

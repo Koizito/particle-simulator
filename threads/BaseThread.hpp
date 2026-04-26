@@ -1,5 +1,8 @@
 #pragma once
+#include <memory>
+#include <string>
 #include <thread>
+#include <spdlog/spdlog.h>
 
 struct AppContext;
 
@@ -7,10 +10,12 @@ class BaseThread {
     std::thread workerThread;
 
 protected:
+    std::shared_ptr<spdlog::logger> logger;
+    std::string threadType;
     AppContext& appCtx;
 
 public:
-    explicit BaseThread(AppContext& inputAppCtx);
+    BaseThread(std::shared_ptr<spdlog::logger> inputLogger, std::string inputThreadType, AppContext& inputAppCtx);
 
     void startThread();
 

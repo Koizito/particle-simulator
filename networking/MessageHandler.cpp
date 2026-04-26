@@ -1,13 +1,12 @@
 #include "MessageHandler.hpp"
 #include "app/AppContext.hpp"
 #include "IXWebSocketServer.h"
+#include "core/OutgoingMessage.hpp"
 #include "nlohmann/json.hpp"
-#include <iostream>
 
 
-MessageHandler::MessageHandler(AppContext& inputAppCtx)
-    : appCtx(inputAppCtx) {
-        logger = spdlog::get("messageHandler");
+MessageHandler::MessageHandler(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx)
+    : logger(std::move(inputLogger)), appCtx(inputAppCtx) {
 }
 
 void MessageHandler::handleMessage(const std::string& message) {
@@ -22,13 +21,13 @@ void MessageHandler::handleMessage(const std::string& message) {
     }
 
     if (type == "start") {
-        logger->info("Starting server...");
+        logger->info("Starting simulation...");
         appCtx.setSimulationState(true, true);
     } else if (type == "stop") {
-        logger->info("Stopping server...");
+        logger->info("Stopping simulation...");
         appCtx.setSimulationState(false, false);
     } else if (type == "exit") {
-        logger->info("Exiting server...");
+        logger->info("Exiting simulation...");
         appCtx.signalExit();
     } else if (type == "create_particles") {
         if (!jsonMessage.contains("particles") || !jsonMessage["particles"].is_array()) {
@@ -183,9 +182,5 @@ void MessageHandler::pushWorldSnapshotToQueue(const World& snapshotWorld) const 
 
     logger->debug("World snapshot to be pushed to queue: {}", snapshotJson.dump());
 
-    {
-        std::lock_guard<std::mutex> pushWorldSnapshotLock(appCtx.sendThreadMutex);
-        appCtx.highPrioritySendQueue.emplace(snapshotJson.dump());
-    }
-    appCtx.checkIfSendThreadShouldRun.notify_one();
+    appCtx.messagingQueue.pushMessageToHighPriorityQueue(OutgoingMessage(snapshotJson.dump()));
 }

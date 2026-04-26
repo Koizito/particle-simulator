@@ -1,69 +1,50 @@
 #include "threads/SendThread.hpp"
 #include <mutex>
-#include <iostream>
+#include <utility>
 #include "app/AppContext.hpp"
-#include "core/OutgoingMessage.hpp"
 #include "IXWebSocket.h"
+#include "core/OutgoingMessage.hpp"
 
-SendThread::SendThread(AppContext& inputAppCtx)
-    : BaseThread(inputAppCtx) {
+SendThread::SendThread(std::shared_ptr<spdlog::logger> inputLogger, AppContext& inputAppCtx)
+    : BaseThread(std::move(inputLogger), "SendThread", inputAppCtx) {
 }
 
 void SendThread::runThread() {
     try {
+        logger->debug("[{}] Send loop started", threadType);
         while (true) {
-            std::unique_lock<std::mutex> sendLock(this->appCtx.sendThreadMutex);
-            waitForStartSignal(sendLock);
+            this->appCtx.messagingQueue.waitForDataInQueues(appCtx.shouldSendThreadRun, appCtx.shouldExit);
 
             if (this->appCtx.shouldExit) break;
 
-            OutgoingMessage message = getNextMessage();
-
-            sendLock.unlock();
+            OutgoingMessage message = this->appCtx.messagingQueue.getNextMessage();
 
             if (message.textData.empty() && message.binaryData.empty()) {
+                logger->debug("[{}] No message found to send", threadType);
                 continue;
             }
 
             sendMessage(message);
-
-            this->appCtx.checkIfSimulationThreadShouldRun.notify_one();
         }
+        logger->debug("[{}] Send loop ended", threadType);
     } catch (const std::exception& e) {
-        std::cerr << "Send thread error: " << e.what() << "\n";
+        logger->error("[{}] Error: {}", threadType, e.what());
         this->appCtx.signalExit();
     } catch (...) {
-        std::cerr << "Send thread unknown error\n";
+        logger->error("[{}] Unknown error", threadType);
         this->appCtx.signalExit();
     }
-}
-
-void SendThread::waitForStartSignal(std::unique_lock<std::mutex>& sendLock) const {
-    this->appCtx.checkIfSendThreadShouldRun.wait(sendLock, [this] {
-        return (this->appCtx.shouldSendThreadRun && !this->appCtx.normalSendQueue.empty()) || !this->appCtx.
-               highPrioritySendQueue.empty() || this->appCtx.shouldExit;
-    });
-}
-
-OutgoingMessage SendThread::getNextMessage() const {
-    OutgoingMessage message;
-    if (!this->appCtx.highPrioritySendQueue.empty()) {
-        message = std::move(this->appCtx.highPrioritySendQueue.front());
-        this->appCtx.highPrioritySendQueue.pop();
-    } else if (!this->appCtx.normalSendQueue.empty()) {
-        message = std::move(this->appCtx.normalSendQueue.front());
-        this->appCtx.normalSendQueue.pop();
-    }
-    return message;
 }
 
 void SendThread::sendMessage(const OutgoingMessage& message) const {
-    if (const auto client = this->appCtx.currentClient.load(); client) {
-        if (message.binary) {
-            const ix::IXWebSocketSendData data(message.binaryData);
-            client->sendBinary(data);
-        } else {
-            client->send(message.textData);
-        }
+    logger->debug("[{}] Sending message", threadType);
+    const auto client = this->appCtx.currentClient.load();
+    if (!client) return;
+
+    if (!message.textData.empty()) {
+        client->send(message.textData);
+    }
+    if (!message.binaryData.empty()) {
+        client->sendBinary(ix::IXWebSocketSendData(message.binaryData));
     }
 }
