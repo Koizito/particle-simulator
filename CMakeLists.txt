@@ -7,8 +7,7 @@ project(ParticleSimulator)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(simulator
-        main.cpp
+add_library(simulator_lib STATIC
         core/World.cpp
         core/Particle.cpp
         core/Force.cpp
@@ -22,18 +21,19 @@ add_executable(simulator
         app/MessagingQueue.cpp
 )
 
+target_include_directories(simulator_lib PUBLIC ${CMAKE_SOURCE_DIR})
+
 find_package(ixwebsocket REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(spdlog REQUIRED)
 
-target_include_directories(simulator PRIVATE
-        ${CMAKE_SOURCE_DIR}
-)
-
-target_link_libraries(simulator PRIVATE
+target_link_libraries(simulator_lib PUBLIC
         ixwebsocket::ixwebsocket
         Threads::Threads
         nlohmann_json::nlohmann_json
         spdlog::spdlog
 )
+
+add_executable(simulator main.cpp)
+target_link_libraries(simulator PRIVATE simulator_lib)
