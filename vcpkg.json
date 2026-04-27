@@ -1,0 +1,9 @@
+{
+  "name": "particle-simulator",
+  "version": "0.1.0",
+  "dependencies": [
+    "ixwebsocket",
+    "nlohmann-json",
+    "spdlog"
+  ]
+}
