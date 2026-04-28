@@ -16,20 +16,12 @@ void AppContext::setSimulationState(const bool runSimulationThread, const bool r
     shouldSimulationThreadRun.store(runSimulationThread);
     shouldSendThreadRun.store(runSendThread);
 
-    {
-        std::lock_guard<std::mutex> stateLock(messagingQueue.queuesMutex);
-    }
-    messagingQueue.spaceAvailableCV.notify_all();
-
-    {
-        std::lock_guard<std::mutex> stateLock(messagingQueue.queuesMutex);
-    }
-    messagingQueue.dataAvailableCV.notify_all();
+    messagingQueue.notifyAll();
 }
 
 void AppContext::signalExit() {
     logger->info("Signaling Exit");
     shouldExit.store(true);
-    setSimulationState(true, true);
+    messagingQueue.notifyAll();
     checkIfShouldExit.notify_all();
 }

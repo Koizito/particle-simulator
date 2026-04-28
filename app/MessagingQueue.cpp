@@ -1,6 +1,5 @@
 #include "MessagingQueue.hpp"
 
-#include <memory>
 #include <spdlog/spdlog.h>
 
 MessagingQueue::MessagingQueue(std::shared_ptr<spdlog::logger> inputLogger, size_t inputMaxQueueSize)
@@ -60,4 +59,10 @@ OutgoingMessage MessagingQueue::getNextMessage() {
     }
     spaceAvailableCV.notify_all();
     return message;
+}
+
+void MessagingQueue::notifyAll() {
+    std::lock_guard<std::mutex> lock(queuesMutex);
+    spaceAvailableCV.notify_all();
+    dataAvailableCV.notify_all();
 }

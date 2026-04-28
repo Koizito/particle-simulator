@@ -4,6 +4,7 @@
   "dependencies": [
     "ixwebsocket",
     "nlohmann-json",
-    "spdlog"
+    "spdlog",
+    "catch2"
   ]
 }

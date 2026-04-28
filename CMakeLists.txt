@@ -37,3 +37,21 @@ target_link_libraries(simulator_lib PUBLIC
 
 add_executable(simulator main.cpp)
 target_link_libraries(simulator PRIVATE simulator_lib)
+
+# Unit tests
+find_package(Catch2 CONFIG REQUIRED)
+include(Catch)
+include(CTest)
+enable_testing()
+
+add_executable(unit_tests
+        tests/test_messaging_queue.cpp
+)
+
+target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(unit_tests PRIVATE
+        Catch2::Catch2WithMain
+        simulator_lib
+)
+
+catch_discover_tests(unit_tests)
