@@ -15,7 +15,7 @@ struct World {
     std::vector<Particle> particles;
 
     explicit World(float inputMaxX = 1.0f, float inputMaxY = 1.0f, float inputMaxZ = 1.0f, float inputDt = 0.1f,
-                   float inputGravityAccel = 9.81f);
+                   float inputGravityAccel = -9.81f);
 
     void step();
 

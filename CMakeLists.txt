@@ -49,8 +49,15 @@ include(CTest)
 enable_testing()
 
 add_executable(unit_tests
-        "tests/TestMessagingQueue.cpp"
-        "tests/testSimulationThread.cpp"
+        tests/TestMessagingQueue.cpp
+        tests/TestSimulationThread.cpp
+        tests/DecodedParticle.hpp
+)
+
+configure_file(
+        ${CMAKE_SOURCE_DIR}/tests/5_steps_expected_snapshot.json
+        ${CMAKE_BINARY_DIR}/5_steps_expected_snapshot.json
+        COPYONLY
 )
 
 target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
