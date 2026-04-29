@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <spdlog/spdlog.h>
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "app/MessagingQueue.hpp"
 #include "ThreadJoiner.hpp"

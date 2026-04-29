@@ -49,7 +49,8 @@ include(CTest)
 enable_testing()
 
 add_executable(unit_tests
-        tests/test_messaging_queue.cpp
+        "tests/TestMessagingQueue.cpp"
+        "tests/testSimulationThread.cpp"
 )
 
 target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
