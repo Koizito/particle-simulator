@@ -13,7 +13,12 @@ static auto appCtxLogger = spdlog::stdout_color_mt("appContext");
 static auto messageQueueLogger = spdlog::stdout_color_mt("messageQueue");
 static auto threadsLogger = spdlog::stdout_color_mt("threads");
 
-TEST_CASE("Simulation snapshot after 5 steps is correct", "[simulationthread]") {
+TEST_CASE (
+"Simulation snapshot after 5 steps is correct"
+,
+"[simulationthread]"
+)
+ {
     AppContext appCtx(appCtxLogger, messageQueueLogger);
     SimulationThread simThread(threadsLogger, appCtx);
 

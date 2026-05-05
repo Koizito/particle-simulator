@@ -6,6 +6,7 @@
 struct Particle {
     int id{};
     float mass{}; // grams
+    float radius{}; //meters
     float x{}; // meters
     float y{}; // meters
     float z{}; // meters
@@ -16,7 +17,8 @@ struct Particle {
 
     Particle() = default;
 
-    explicit Particle(int inputId, float inputMass = 1.0f, float inputX = 0.0f, float inputY = 0.0f,
+    explicit Particle(int inputId, float inputMass = 1.0f, float inputRadius = 0.01f, float inputX = 0.0f,
+                      float inputY = 0.0f,
                       float inputZ = 0.0f, float inputVelX = 0.0f, float inputVelY = 0.0f,
                       float inputVelZ = 0.0f);
 };

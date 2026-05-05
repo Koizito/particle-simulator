@@ -5,7 +5,9 @@ class ThreadJoiner {
     std::thread& thread;
 
 public:
-    explicit ThreadJoiner(std::thread& t) : thread(t) {}
+    explicit ThreadJoiner(std::thread& t) : thread(t) {
+    }
+
     ~ThreadJoiner() {
         if (thread.joinable()) {
             thread.join();
@@ -13,5 +15,6 @@ public:
     }
 
     ThreadJoiner(const ThreadJoiner&) = delete;
+
     ThreadJoiner& operator=(const ThreadJoiner&) = delete;
 };

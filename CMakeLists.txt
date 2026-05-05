@@ -35,9 +35,9 @@ target_link_libraries(simulator_lib PUBLIC
         spdlog::spdlog
 )
 
-if(WIN32)
+if (WIN32)
     target_link_libraries(simulator_lib PUBLIC bcrypt)
-endif()
+endif ()
 
 add_executable(simulator main.cpp)
 target_link_libraries(simulator PRIVATE simulator_lib)

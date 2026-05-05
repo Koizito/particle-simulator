@@ -10,5 +10,6 @@ struct OutgoingMessage {
     OutgoingMessage() = default;
 
     explicit OutgoingMessage(std::string inputTextData);
+
     explicit OutgoingMessage(std::string inputTextData, std::vector<uint8_t> inputBinaryData);
 };

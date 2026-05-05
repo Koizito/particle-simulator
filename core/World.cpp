@@ -1,8 +1,12 @@
 #include "core/World.hpp"
 
+#include "Constants.hpp"
+
 World::World(const float inputMaxX, const float inputMaxY, const float inputMaxZ, const float inputDt,
-             const float inputGravityAccel)
-    : maxX(inputMaxX), maxY(inputMaxY), maxZ(inputMaxZ), dt(inputDt), gravityAccel(inputGravityAccel) {
+             const float inputGravityAccel, const float inputAirDensity, const float inputDragCoefficient,
+             const float inputAirViscosity)
+    : maxX(inputMaxX), maxY(inputMaxY), maxZ(inputMaxZ), dt(inputDt), gravityAccel(inputGravityAccel),
+      airDensity(inputAirDensity), dragCoefficient(inputDragCoefficient), airViscosity(inputAirViscosity) {
 }
 
 void World::step() {
@@ -16,6 +20,8 @@ void World::step() {
             particleForceY = particleForceY + force.y;
             particleForceZ = particleForceZ + force.z;
         }
+
+        calculateAirDrag(particle, particleForceX, particleForceY, particleForceZ);
 
         float accelX = accelerationCalculation(particleForceX, particle.mass);
         float accelY = accelerationCalculation(particleForceY, particle.mass);
@@ -124,4 +130,28 @@ bool World::canUpdateBounds(const float newMaxX, const float newMaxY, const floa
         if (particle.x > newMaxX || particle.y > newMaxY || particle.z > newMaxZ) return false;
     }
     return true;
+}
+
+void World::calculateAirDrag(const Particle& particle, float& particleForceX, float& particleForceY,
+                             float& particleForceZ) const {
+    const float speed = std::sqrt(particle.velX * particle.velX +
+                                  particle.velY * particle.velY +
+                                  particle.velZ * particle.velZ);
+    if (speed < 1e-6f) return;
+
+    const float area = constants::PI * particle.radius * particle.radius;
+    const float quadraticForce = 0.5f * airDensity * dragCoefficient * area * speed * speed; // Drag Equation
+
+    const float linearForce = constants::SIX_PI * airViscosity * particle.radius * speed; // Stoke's Law
+
+    const float totalDrag = quadraticForce + linearForce;
+
+    const float invSpeed = 1.0f / speed;
+    const float fx = -totalDrag * particle.velX * invSpeed;
+    const float fy = -totalDrag * particle.velY * invSpeed;
+    const float fz = -totalDrag * particle.velZ * invSpeed;
+
+    particleForceX += fx;
+    particleForceY += fy;
+    particleForceZ += fz;
 }

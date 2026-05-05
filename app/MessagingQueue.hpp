@@ -21,12 +21,12 @@ public:
     explicit MessagingQueue(std::shared_ptr<spdlog::logger> inputLogger, size_t inputMaxQueueSize = 100);
 
     void waitForSpaceInNormalQueue(
-    const std::atomic<bool>& shouldRun,
-    const std::atomic<bool>& shouldExit);
+        const std::atomic<bool>& shouldRun,
+        const std::atomic<bool>& shouldExit);
 
     void waitForDataInQueues(
-    const std::atomic<bool>& shouldRun,
-    const std::atomic<bool>& shouldExit);
+        const std::atomic<bool>& shouldRun,
+        const std::atomic<bool>& shouldExit);
 
     void pushMessageToNormalQueue(OutgoingMessage message);
 

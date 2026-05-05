@@ -6,14 +6,24 @@
 
 static auto testLogger = spdlog::stdout_color_mt("test");
 
-TEST_CASE("getNextMessage returns empty message when queues are empty", "[queue]") {
+TEST_CASE (
+"getNextMessage returns empty message when queues are empty"
+,
+"[queue]"
+)
+ {
     MessagingQueue queue(testLogger);
     OutgoingMessage emptyMessage = queue.getNextMessage();
     REQUIRE(emptyMessage.textData.empty());
     REQUIRE(emptyMessage.binaryData.empty());
 }
 
-TEST_CASE("Using pushMessageToNormalQueue pushes an OutgoingMessage into the normal priority queue", "[queue][pushtonormalqueue]") {
+TEST_CASE (
+"Using pushMessageToNormalQueue pushes an OutgoingMessage into the normal priority queue"
+,
+"[queue][pushtonormalqueue]"
+)
+ {
     MessagingQueue queue(testLogger);
 
     auto emptyMessage = queue.getNextMessage();
@@ -30,7 +40,12 @@ TEST_CASE("Using pushMessageToNormalQueue pushes an OutgoingMessage into the nor
     REQUIRE(filledMessage.binaryData.empty());
 }
 
-TEST_CASE("Using pushMessageToHighPriorityQueue pushes an OutgoingMessage into the high priority queue", "[queue][pushtohighpriorityqueue]") {
+TEST_CASE (
+"Using pushMessageToHighPriorityQueue pushes an OutgoingMessage into the high priority queue"
+,
+"[queue][pushtohighpriorityqueue]"
+)
+ {
     MessagingQueue queue(testLogger);
 
     auto emptyMessage = queue.getNextMessage();
@@ -47,7 +62,12 @@ TEST_CASE("Using pushMessageToHighPriorityQueue pushes an OutgoingMessage into t
     REQUIRE(filledMessage.binaryData.empty());
 }
 
-TEST_CASE("High priority messages are returned first when calling getNextMessage", "[queue][pushtonormalqueue][pushtohighpriorityqueue]") {
+TEST_CASE (
+"High priority messages are returned first when calling getNextMessage"
+,
+"[queue][pushtonormalqueue][pushtohighpriorityqueue]"
+)
+ {
     MessagingQueue queue(testLogger);
 
     std::string inputTextDataNormal = "testNormalMessage";
@@ -67,7 +87,12 @@ TEST_CASE("High priority messages are returned first when calling getNextMessage
     REQUIRE(normalPriorityMessage.binaryData.empty());
 }
 
-TEST_CASE("waitForSpaceInNormalQueue returns immediately when space available and shouldRun=true", "[queue][spaceavailablecv]") {
+TEST_CASE (
+"waitForSpaceInNormalQueue returns immediately when space available and shouldRun=true"
+,
+"[queue][spaceavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{true};
     const std::atomic<bool> shouldExit{false};
@@ -78,7 +103,12 @@ TEST_CASE("waitForSpaceInNormalQueue returns immediately when space available an
     REQUIRE((end - start) < std::chrono::milliseconds(10));
 }
 
-TEST_CASE("waitForSpaceInNormalQueue blocks when queue full and shouldExit false", "[queue][spaceavailablecv]") {
+TEST_CASE (
+"waitForSpaceInNormalQueue blocks when queue full and shouldExit false"
+,
+"[queue][spaceavailablecv]"
+)
+ {
     const size_t MAX = 3;
     MessagingQueue queue(testLogger, MAX);
     const std::atomic<bool> shouldRun{true};
@@ -105,7 +135,12 @@ TEST_CASE("waitForSpaceInNormalQueue blocks when queue full and shouldExit false
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForSpaceInNormalQueue unblocks on shouldExit", "[queue][spaceavailablecv]") {
+TEST_CASE (
+"waitForSpaceInNormalQueue unblocks on shouldExit"
+,
+"[queue][spaceavailablecv]"
+)
+ {
     const size_t MAX = 3;
     MessagingQueue queue(testLogger, MAX);
     const std::atomic<bool> shouldRun{false};
@@ -132,7 +167,12 @@ TEST_CASE("waitForSpaceInNormalQueue unblocks on shouldExit", "[queue][spaceavai
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForSpaceInNormalQueue blocks when shouldRun false and shouldExit false", "[queue][spaceavailablecv]") {
+TEST_CASE (
+"waitForSpaceInNormalQueue blocks when shouldRun false and shouldExit false"
+,
+"[queue][spaceavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{false};
     std::atomic<bool> shouldExit{false};
@@ -154,7 +194,12 @@ TEST_CASE("waitForSpaceInNormalQueue blocks when shouldRun false and shouldExit 
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForDataInQueues returns when highPriorityQueue receives object", "[queue][dataavailablecv]") {
+TEST_CASE (
+"waitForDataInQueues returns when highPriorityQueue receives object"
+,
+"[queue][dataavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{ false };
     const std::atomic<bool> shouldExit{ false };
@@ -175,7 +220,12 @@ TEST_CASE("waitForDataInQueues returns when highPriorityQueue receives object", 
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForDataInQueues blocks when queues are empty and shouldExit false", "[queue][dataavailablecv]") {
+TEST_CASE (
+"waitForDataInQueues blocks when queues are empty and shouldExit false"
+,
+"[queue][dataavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{ true };
     const std::atomic<bool> shouldExit{ false };
@@ -196,7 +246,12 @@ TEST_CASE("waitForDataInQueues blocks when queues are empty and shouldExit false
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForDataInQueues blocks when shouldRun and shouldExit false", "[queue][dataavailablecv]") {
+TEST_CASE (
+"waitForDataInQueues blocks when shouldRun and shouldExit false"
+,
+"[queue][dataavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     std::atomic<bool> shouldRun{ false };
     const std::atomic<bool> shouldExit{ false };
@@ -220,7 +275,12 @@ TEST_CASE("waitForDataInQueues blocks when shouldRun and shouldExit false", "[qu
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForDataInQueues blocks when normal queue not empty, shouldRun false and shouldExit false. Unblocks on shouldExit true", "[queue][dataavailablecv]") {
+TEST_CASE (
+"waitForDataInQueues blocks when normal queue not empty, shouldRun false and shouldExit false. Unblocks on shouldExit true"
+,
+"[queue][dataavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{ false };
     std::atomic<bool> shouldExit{ false };
@@ -244,7 +304,12 @@ TEST_CASE("waitForDataInQueues blocks when normal queue not empty, shouldRun fal
     REQUIRE(waken.load());
 }
 
-TEST_CASE("waitForDataInQueues blocks when normal queue empty, shouldRun true and shouldExit false. Unblocks on shouldExit true", "[queue][dataavailablecv]") {
+TEST_CASE (
+"waitForDataInQueues blocks when normal queue empty, shouldRun true and shouldExit false. Unblocks on shouldExit true"
+,
+"[queue][dataavailablecv]"
+)
+ {
     MessagingQueue queue(testLogger);
     const std::atomic<bool> shouldRun{ true };
     std::atomic<bool> shouldExit{ false };
